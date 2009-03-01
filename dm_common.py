@@ -8,7 +8,7 @@ class Player(object):
     def __repr__(self):
         return self.name
 
-"""Dice rolls"""
+# Dice rolls
 
 def d20():
     "Simulates a d20 roll"
