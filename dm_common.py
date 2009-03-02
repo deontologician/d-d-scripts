@@ -86,19 +86,19 @@ class Commandline(object):
 def ordinal(num):
     "Returns the number passed in with the correct ordinal suffix"
     ones_place = num % 10
-    suffix = "ERROR"
+    tens = num % 100
     if ones_place == 1:
-        if num == 11:
+        if tens == 11:
             suffix = "th"
         else:
             suffix = "st"
     elif ones_place == 2:
-        if num == 12:
+        if tens == 12:
             suffix = "th"
         else:
             suffix = "nd"
     elif ones_place == 3:
-        if num == 13:
+        if tens == 13:
             suffix = "th"
         else:
             suffix = "rd"
