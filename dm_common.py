@@ -5,28 +5,25 @@ class Player(object):
     def __init__(self, name, init_mod):
         self.name = name
         self.init_mod = init_mod
-
-    def __repr__(self):
-        return self.name
-
-class Monster(object):
-    def __init__(self, name, init_mod, max_hp):
-        self.name = name
-        self.init_mod = init_mod
-        self.max_hp = max_hp
-        self.hp = max_hp
         self.effects = []
 
     def __repr__(self):
         return self.name
 
+    def affected_by(self, effect):
+        "Adds a status effect string"
+        self.effects.append(effect)
+        
+
+class Monster(Player):
+    def __init__(self, name, init_mod, max_hp):
+        Player.__init__(self, name, init_mod)
+        self.max_hp = max_hp
+        self.hp = max_hp
+
     def damage(self, dmg):
         "Simulates damage to monster"
         self.hp -= dmg
-
-    def affected_by(self, effect):
-        "Adds a status effect (which is a string)"
-        self.effects.append(effect)
 
     def is_bloodied(self):
         "Whether the monster is bloodied"
@@ -51,7 +48,6 @@ class Completer(object):
                                 if s and s.startswith(text)]
             else:
                 self.matches = self.options[:]
-        
         try:
             response = self.matches[state]
         except IndexError:
