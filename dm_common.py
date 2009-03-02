@@ -82,6 +82,7 @@ class Commandline(object):
         for cmd in sorted(self.commands.keys()):
             help_string += cmd + ", "
         help_string += "help, exit"
+        return help_string
         
 def ordinal(num):
     "Returns the number passed in with the correct ordinal suffix"
