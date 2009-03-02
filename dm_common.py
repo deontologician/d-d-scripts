@@ -10,9 +10,11 @@ class Player(object):
     def __repr__(self):
         return self.name
 
-    def affected_by(self, effect):
+    def affect(self, effect):
         "Adds a status effect string"
         self.effects.append(effect)
+    def life_status(self):
+        return ""
         
 
 class Monster(Player):
@@ -25,9 +27,20 @@ class Monster(Player):
         "Simulates damage to monster"
         self.hp -= dmg
 
-    def is_bloodied(self):
-        "Whether the monster is bloodied"
-        return self.max_hp/2 >= self.hp
+    def life_status(self):
+        "Whether the monster is bloodied or dead"
+        if self.hp <= 0:
+            return "dead"
+        elif self.max_hp/2 >= self.hp:
+            return "bloodied"
+        else:
+            return ""
+
+    def status(self):
+        "Returns a string of the current status"
+        return '"' + self.name + '" ' + str(self.hp) + "hp "\
+            + ('(' + self.life_status() + ')' if self.life_status() else "")\
+            + ("[" + "][".join(self.effects) + "]" if self.effects else "")
     
 
 class Completer(object):
@@ -58,23 +71,31 @@ class Commandline(object):
     "A command line useful for different scripts"
     def __init__(self, command_dict):
         self.commands = command_dict
-        self.completer = Completer(command_dict.keys() + ['exit','help'])
+        
+    def reset_completer(self):
+        Completer(self.commands.keys() + ['exit','help'])
 
     def loop(self):
         "Call this to start the command loop"
         print 'type "help" for help'
         while True:
-            cmd = raw_input("cmd> ").strip().lower().split()[0]
-            if cmd == 'exit':
-                print "Bye"
-                break
-            elif cmd == 'help':
-                print self.help()
-            else:
-                try:
-                    self.commands[cmd]()
-                except KeyError:
-                    print "Command not recognized."
+            try:
+                self.reset_completer() # commands can add their own
+                                       # completers
+                cmd = raw_input("cmd> ").strip().lower().split()[0]
+                if cmd == 'exit':
+                    print "Bye"
+                    break
+                elif cmd == 'help':
+                    print self.help()
+                else:
+                    try:
+                        self.commands[cmd]()
+                    except KeyError:
+                        print "Command not recognized."
+            except Exception as exp:
+                print exp
+                #print "Nope."
 
     def help(self):
         "Gets a string of the available commands"

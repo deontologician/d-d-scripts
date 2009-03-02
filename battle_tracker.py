@@ -3,6 +3,7 @@ from dm_common import Player
 from dm_common import Monster
 from dm_common import Commandline
 from dm_common import ordinal
+from dm_common import Completer
 
 from time import strftime
 from random import choice
@@ -29,6 +30,7 @@ class Session(object):
         return rep 
 
     def curr_enc(self):
+        "Get the current encounter"
         return self.encounters[-1]
 
     def new_players(self):
@@ -36,11 +38,12 @@ class Session(object):
         num_players = int(raw_input("How many players are there? "))
         self.plist = []
         for i in xrange(num_players):
-            name = raw_input("%s player's name: " % ordinal(i+1))
+            name = raw_input("%s player's name: " % ordinal(i+1)).strip()
             init = int(raw_input("%s's initiative modifier: " % name))
             self.plist.append(Player(name, init))
 
     def save(self):
+        "Saves the session to a readable file"
         default_name = self.name.title().replace(" ","") + ".txt"
         filename = raw_input("Filename (default '%s'): "\
                                  % default_name).strip()
@@ -52,7 +55,51 @@ class Session(object):
         print "Encounter saved to %s " % filename
 
     def print_current_enc(self):
-        print self.encounters[-1]
+        print self.curr_enc()
+
+    def damage(self):
+        "Damages a monster"
+        mlist = self.curr_enc().mlist
+        Completer([mon.name for mon in mlist]) # add monsters to tab
+                                               # completion
+        print "Which Monster gets the damage?"
+        for mon in mlist:
+            print mon.name
+        monster_name = raw_input(">")
+        
+        for mnstr in mlist:
+            if mnstr.name == monster_name:
+                monster = mnstr
+                break
+        else:
+            print "No monster with that name."
+            return
+        monster.damage(int(raw_input("How much damage?: ")))
+
+    def print_mon_status(self):
+        "Prints the status of all Monsters"
+        print "Monster Status'"
+        for mon in self.curr_enc().mlist:
+            print mon.status()
+
+    def affect(self):
+        mlist = self.curr_enc().mlist
+        Completer([mon.name for mon in mlist]) # add monsters to tab
+                                               # completion
+        print "Which Monster gets affected?"
+        for mon in mlist:
+            print mon.name
+        monster_name = raw_input(">")
+        
+        for mon in mlist:
+            if mon.name == monster_name:
+                monster = mon
+                break
+        else:
+            print "No monster with that name"
+            return
+        monster.affect(raw_input("What is the effect?: "))
+        
     
 
 class Encounter(object):
@@ -80,8 +127,9 @@ class Encounter(object):
 
     def __repr__(self):
         ret_string = ("-[%s]-" % self.enc_name).center(80) + "\n"
-        for (num,name) in self.init_list:
-            ret_string += str(num) + " -> " + str(name) + "\n"
+        ret_string += "\n".join([str(num) + " -> '" + str(name) + "' " + 
+                                 name.life_status()
+                                 for (num,name) in self.init_list])
         return ret_string + "\n"
 
     def new_monsters(self):
@@ -120,6 +168,11 @@ def init_comparer(tupleA, tupleB):
             return 1
         else: # flip a coin if all else fails
             return choice([-1,1])
+
+def make_printer(maker_of_thing_to_be_printed):
+    def f():
+        print maker_of_thing_to_be_printed()
+    return f
       
 def new_encounter(plist):
     enc_name = raw_input("Encounter name: ")
@@ -133,14 +186,17 @@ def new_encounter(plist):
     print enco
     return enco
  
-
 if __name__ == "__main__":
-    print "-- Initiative Helper --".center(80)
+    print "-- Battle Tracker --".center(80)
     
     session = Session()
     command_dict = {'next_encounter': session.next_encounter,
                     'print_init': session.print_current_enc,
                     'save': session.save,
-                    'new_players': session.new_players}
+                    'new_players': session.new_players,
+                    'damage': session.damage,
+                    'mon_status': session.print_mon_status,
+                    'roll': make_printer(d20),
+                    'affect': session.affect}
     
     Commandline(command_dict).loop()
