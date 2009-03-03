@@ -13,6 +13,11 @@ class Player(object):
     def affect(self, effect):
         "Adds a status effect string"
         self.effects.append(effect)
+    
+    def defect(self, effect):
+        "Removes a status effect string"
+        self.effects.remove(effect)
+
     def life_status(self):
         return ""
         
@@ -38,7 +43,8 @@ class Monster(Player):
 
     def status(self):
         "Returns a string of the current status"
-        return '"' + self.name + '" ' + str(self.hp) + "hp "\
+        return self.name + ": (" + str(self.hp) + "/"\
+            + str(self.max_hp) + ")hp "\
             + ('(' + self.life_status() + ')' if self.life_status() else "")\
             + ("[" + "][".join(self.effects) + "]" if self.effects else "")
     
@@ -125,7 +131,7 @@ def ordinal(num):
         else:
             suffix = "rd"
     else:
-        suffix = "st"
+        suffix = "th"
     return "%d%s" % (num,suffix)
         
 

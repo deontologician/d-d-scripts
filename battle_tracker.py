@@ -60,12 +60,12 @@ class Session(object):
     def damage(self):
         "Damages a monster"
         mlist = self.curr_enc().mlist
-        Completer([mon.name for mon in mlist]) # add monsters to tab
+        valid_mons = [mon.name for mon in mlist]
+        Completer(valid_mons) # add monsters to tab
                                                # completion
         print "Which Monster gets the damage?"
-        for mon in mlist:
-            print mon.name
-        monster_name = raw_input(">")
+        print "\n".join([mon.name for mon in mlist])
+        monster_name = raw_input("Name: ")
         
         for mnstr in mlist:
             if mnstr.name == monster_name:
@@ -78,18 +78,17 @@ class Session(object):
 
     def print_mon_status(self):
         "Prints the status of all Monsters"
-        print "Monster Status'"
-        for mon in self.curr_enc().mlist:
-            print mon.status()
+        print "<<Monster Status'>>".center(80)
+        print "\n".join([mon.status() for mon in self.curr_enc().mlist])
 
     def affect(self):
         mlist = self.curr_enc().mlist
-        Completer([mon.name for mon in mlist]) # add monsters to tab
+        valid_mons = [mon.name for mon in mlist]
+        Completer(valid_mons) # add monsters to tab
                                                # completion
         print "Which Monster gets affected?"
-        for mon in mlist:
-            print mon.name
-        monster_name = raw_input(">")
+        print "\n".join(valid_mons)
+        monster_name = raw_input("Name: ")
         
         for mon in mlist:
             if mon.name == monster_name:
@@ -99,8 +98,32 @@ class Session(object):
             print "No monster with that name"
             return
         monster.affect(raw_input("What is the effect?: "))
-        
-    
+
+    def defect(self):
+        "Removes an affect from a monster"
+        mlist = self.curr_enc().mlist
+        valid_mons = [mon.name for mon in mlist if mon.effects]
+        if not valid_mons:
+            print "No monsters have effects currently."
+            return
+
+        Completer(valid_mons) #add monsters to tab completion
+        print "Which monster's effect is gone?"
+        print "\n".join(valid_mons)
+        monster_name = raw_input("Name: ")
+        for mon in mlist:
+            if mon.name == monster_name:
+                monster = mon
+                break
+        else:
+            print "No monster with that name"
+            return
+
+        Completer(monster.effects)
+        print "Which effect needs to be removed?"
+        print "\n".join(monster.effects)
+        monster.defect(raw_input("Effect: "))
+            
 
 class Encounter(object):
     "Simulates an encounter given a player and monster list"
@@ -117,11 +140,11 @@ class Encounter(object):
 
     def roll_initiative(self):
         "Rolls the initiative and creates the initiative order"
-        self.init_list += [(d20() + plyr.init_mod + self.p_mod,
-                            plyr) for plyr in self.plist]
+        self.init_list.extend([(d20() + plyr.init_mod + self.p_mod,
+                                plyr) for plyr in self.plist])
 
-        self.init_list += [(d20() + mnstr.init_mod + self.m_mod,
-                            mnstr) for mnstr in self.mlist]
+        self.init_list.extend([(d20() + mnstr.init_mod + self.m_mod,
+                                mnstr) for mnstr in self.mlist])
 
         self.init_list.sort(cmp=init_comparer)
 
@@ -144,10 +167,12 @@ class Encounter(object):
         while True:
             mon_name = raw_input("Monster name: ").title()
             mon_num = int(raw_input("Number of %s(s): " % mon_name))
-            mon_init = int(raw_input("%s initiative: " % mon_name))
+            mon_init = int(raw_input("%s initiative modifier: "
+                                     % mon_name))
             mon_hp = int(raw_input("%s hp: " % mon_name))
             mml(mon_name, mon_num, mon_init, mon_hp)
-            more = raw_input("More monster types? (yes/no) ").strip().lower()
+            more = raw_input("More monster types? (yes/no) "\
+                                 ).strip().lower()
             if more == "no":
                 print self.mlist
                 break
@@ -190,13 +215,14 @@ if __name__ == "__main__":
     print "-- Battle Tracker --".center(80)
     
     session = Session()
-    command_dict = {'next_encounter': session.next_encounter,
+    command_dict = {'next': session.next_encounter,
                     'print_init': session.print_current_enc,
                     'save': session.save,
                     'new_players': session.new_players,
-                    'damage': session.damage,
-                    'mon_status': session.print_mon_status,
+                    'dmg': session.damage,
+                    'monstatus': session.print_mon_status,
                     'roll': make_printer(d20),
-                    'affect': session.affect}
+                    'affect': session.affect,
+                    'defect': session.defect}
     
     Commandline(command_dict).loop()
