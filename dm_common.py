@@ -133,8 +133,19 @@ def ordinal(num):
     else:
         suffix = "th"
     return "%d%s" % (num,suffix)
-        
 
+def letterer(num):
+    "Creates a unique letter sequence for each number passed in"
+    if num < 0:
+        raise ArithmeticError("Number must be 0 or greater")
+    if num == 0:
+        return ""
+    num = num - 1
+    letters = chr(ord('A') + (num % 26))
+    while num > 25:
+        num = num / 26 - 1
+        letters = chr(ord('A')+(num % 26)) + letters
+    return letters
         
         
 # Dice rolls

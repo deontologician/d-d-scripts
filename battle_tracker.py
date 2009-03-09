@@ -3,6 +3,7 @@ from dm_common import Player
 from dm_common import Monster
 from dm_common import Commandline
 from dm_common import ordinal
+from dm_common import letterer
 from dm_common import Completer
 
 from time import strftime
@@ -159,8 +160,12 @@ class Encounter(object):
         "Creates new monsters from the command line"
         self.mlist = []
         def mml(mon_type, num, init_mod, hp):
+            if num == 1: #special case, ignore auto-lettering
+                self.mlist.append(Monster(mon_type, init_mod, hp))
+                return
             for pl in xrange(num):
-                mon = Monster(mon_type + " " + chr(ord('A')+pl),
+                      
+                mon = Monster(mon_type + " " + letterer(pl+1),
                               init_mod, hp)
                 self.mlist.append(mon)
 
