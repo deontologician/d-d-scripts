@@ -1,1 +1,8 @@
-Various scripts to help a dungeon master do his job. Public Domain'd!
+Scripts to help a dungeon master do his job. This was made with D&D
+4th edition in mind, but may be generally useful. The basic idea is to
+help automate a lot of the tedious stuff like figuring out initiative
+order etc, but not to turn D&D into a MUD.  Think of it like a
+note-taking system that is structured around a specific purpose, but
+with a few extra features that help out.
+
+MIT License
