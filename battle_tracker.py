@@ -1,10 +1,4 @@
-from dm_common import d20
-from dm_common import Player
-from dm_common import Monster
-from dm_common import Commandline
-from dm_common import ordinal
-from dm_common import letterer
-from dm_common import Completer
+import dm_common as dm
 
 from time import strftime
 from random import choice
@@ -12,39 +6,67 @@ from random import choice
 class Session(object):
     "A series of encounters "
     def __init__(self):
-        self.name = raw_input("Name of Session: ").strip()
-        self.date = strftime("%A %B %d, %Y %I:%M %p")
-        self.encounters = []
-        self.plist = []
-        self.new_players()
-        self.next_encounter()
+        try:
+            self.name = raw_input("Name of Session: ").strip()
+            self.date = strftime("%A %B %d, %Y %I:%M %p")
+            self.encounters = []
+            self.plist = []
+            self.new_players()
+            self.next_encounter()
+        except (KeyboardInterrupt, EOFError, ValueError):
+            print "\nOK Bye!"
+            exit(0)
 
-    def next_encounter(self):
+    @dm.cmddoc("Proceed to the next encounter")
+    def next_encounter(self, args = None):
         "Adds a new encounter to the list"
+        if args is not None: args = []
         self.encounters.append(new_encounter(self.plist))
 
-    def __repr__(self):
+    def __repr__(self, args):
         rep = self.name + "\n" + self.date + "\n"
         for i,enco in enumerate(self.encounters):
             rep += "Encounter #%d\n" % (i+1)
             rep += str(enco)
         return rep 
 
-    def curr_enc(self):
+    def curr_enc(self, _args = None):
         "Get the current encounter"
         return self.encounters[-1]
 
-    def new_players(self):
+    @dm.cmddoc("Adds new players to the current session")
+    def new_players(self, args = None):
         "Makes a new list of characters"
-        num_players = int(raw_input("How many players are there? "))
+        if args is not None: args = []
+        while True:
+            try:
+                num_players = int(raw_input("How many players are there? "))
+                if num_players > 10:
+                    sure = raw_input("Are you sure you want %d players?[y/N] " %
+                                     num_players)
+                    if sure.lower() in ["y","yes"]:
+                        break
+                    continue
+                break
+            except ValueError:
+                print "Invalid value, try again"
+            
         self.plist = []
         for i in xrange(num_players):
-            name = raw_input("%s player's name: " % ordinal(i+1)).strip()
-            init = int(raw_input("%s's initiative modifier: " % name))
-            self.plist.append(Player(name, init))
+            while True:
+                try: 
+                    name = raw_input("%s player's name: " % dm.ordinal(i+1)).strip()
+                    init = int(raw_input("%s's initiative modifier: " % name))
+                    self.plist.append(dm.Player(name, init))
+                    break
+                except ValueError:
+                    print "Invalid input. Try again"
+                    continue
 
-    def save(self):
+    @dm.cmddoc("Saves the current session to a file")
+    def save(self, args = None):
         "Saves the session to a readable file"
+        if args is not None: args = []
         default_name = self.name.title().replace(" ","") + ".txt"
         filename = raw_input("Filename (default '%s'): "\
                                  % default_name).strip()
@@ -55,14 +77,13 @@ class Session(object):
         f.close()
         print "Encounter saved to %s " % filename
 
-    def print_current_enc(self):
-        print self.curr_enc()
-
-    def damage(self):
+    @dm.cmddoc("Damages a monster or a player")
+    def damage(self, args = None):
         "Damages a monster"
+        if args is not None: args = []
         mlist = self.curr_enc().mlist
         valid_mons = [mon.name for mon in mlist]
-        Completer(valid_mons) # add monsters to tab
+        dm.Completer(valid_mons) # add monsters to tab
                                                # completion
         print "Which Monster gets the damage?"
         print "\n".join([mon.name for mon in mlist])
@@ -76,20 +97,24 @@ class Session(object):
             print "No monster with that name."
             return
         monster.damage(int(raw_input("How much damage?: ")))
-
-    def print_mon_status(self):
+    
+    @dm.cmddoc("Prints a given monster's status")
+    def print_mon_status(self, args = None):
         "Prints the status of all Monsters"
+        if args is not None: args = []
         print "<<Monster Status'>>".center(80)
         print "\n".join([mon.status() for mon in self.curr_enc().mlist])
 
-    def affect(self):
+    @dm.cmddoc("Adds an effect to a monster or player")
+    def affect(self, args = None):
+        if args is not None: args = []
         mlist = self.curr_enc().mlist
         valid_mons = [mon.name for mon in mlist]
-        Completer(valid_mons) # add monsters to tab
+        dm.Completer(valid_mons) # add monsters to tab
                                                # completion
         print "Which Monster gets affected?"
         print "\n".join(valid_mons)
-        monster_name = raw_input("Name: ")
+        monster_name = raw_input("Name: ").strip()
         
         for mon in mlist:
             if mon.name == monster_name:
@@ -98,20 +123,22 @@ class Session(object):
         else:
             print "No monster with that name"
             return
-        monster.affect(raw_input("What is the effect?: "))
+        monster.affect(raw_input("What is the effect?: ").strip())
 
-    def defect(self):
+    @dm.cmddoc("Removes an effect from a monster or player")
+    def defect(self, args = None):
         "Removes an affect from a monster"
+        if args is not None: args = []
         mlist = self.curr_enc().mlist
         valid_mons = [mon.name for mon in mlist if mon.effects]
         if not valid_mons:
             print "No monsters have effects currently."
             return
 
-        Completer(valid_mons) #add monsters to tab completion
+        dm.Completer(valid_mons) #add monsters to tab completion
         print "Which monster's effect is gone?"
         print "\n".join(valid_mons)
-        monster_name = raw_input("Name: ")
+        monster_name = raw_input("Name: ").strip()
         for mon in mlist:
             if mon.name == monster_name:
                 monster = mon
@@ -120,11 +147,10 @@ class Session(object):
             print "No monster with that name"
             return
 
-        Completer(monster.effects)
+        dm.Completer(monster.effects)
         print "Which effect needs to be removed?"
         print "\n".join(monster.effects)
-        monster.defect(raw_input("Effect: "))
-            
+        monster.defect(raw_input("Effect: ").strip())
 
 class Encounter(object):
     "Simulates an encounter given a player and monster list"
@@ -141,10 +167,10 @@ class Encounter(object):
 
     def roll_initiative(self):
         "Rolls the initiative and creates the initiative order"
-        self.init_list.extend([(d20() + plyr.init_mod + self.p_mod,
+        self.init_list.extend([(dm.d20() + plyr.init_mod + self.p_mod,
                                 plyr) for plyr in self.plist])
 
-        self.init_list.extend([(d20() + mnstr.init_mod + self.m_mod,
+        self.init_list.extend([(dm.d20() + mnstr.init_mod + self.m_mod,
                                 mnstr) for mnstr in self.mlist])
 
         self.init_list.sort(cmp=init_comparer)
@@ -161,12 +187,12 @@ class Encounter(object):
         self.mlist = []
         def mml(mon_type, num, init_mod, hp):
             if num == 1: #special case, ignore auto-lettering
-                self.mlist.append(Monster(mon_type, init_mod, hp))
+                self.mlist.append(dm.Monster(mon_type, init_mod, hp))
                 return
             for pl in xrange(num):
                       
-                mon = Monster(mon_type + " " + letterer(pl+1),
-                              init_mod, hp)
+                mon = dm.Monster(mon_type + " " + dm.letterer(pl+1),
+                                 init_mod, hp)
                 self.mlist.append(mon)
 
         while True:
@@ -178,9 +204,13 @@ class Encounter(object):
             mml(mon_name, mon_num, mon_init, mon_hp)
             more = raw_input("More monster types? (yes/no) "\
                                  ).strip().lower()
-            if more == "no":
+            if more == "yes":
+                continue
+            else:
                 print self.mlist
                 break
+
+                
 
 
 def init_comparer(tupleA, tupleB):
@@ -199,9 +229,12 @@ def init_comparer(tupleA, tupleB):
         else: # flip a coin if all else fails
             return choice([-1,1])
 
-def make_printer(maker_of_thing_to_be_printed):
-    def f():
-        print maker_of_thing_to_be_printed()
+def make_printer(returner, cmddoc):
+    """Returns a function that prints the result of returner, and has the given
+    cmddoc"""
+    @dm.cmddoc(cmddoc)
+    def f(*args, **kwargs):
+        print returner(*args, **kwargs)
     return f
       
 def new_encounter(plist):
@@ -220,14 +253,19 @@ if __name__ == "__main__":
     print "-- Battle Tracker --".center(80)
     
     session = Session()
+
+    print_init = make_printer(session.curr_enc,
+                              "Prints the current initiative list")
+    roll = make_printer(dm.d20, "Rolls a d20")
+
     command_dict = {'next': session.next_encounter,
-                    'print_init': session.print_current_enc,
+                    'ls': print_init,
                     'save': session.save,
                     'new_players': session.new_players,
                     'dmg': session.damage,
                     'monstatus': session.print_mon_status,
-                    'roll': make_printer(d20),
+                    'roll': roll,
                     'affect': session.affect,
                     'defect': session.defect}
     
-    Commandline(command_dict).loop()
+    dm.Commandline(command_dict).loop()

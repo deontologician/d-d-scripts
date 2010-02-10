@@ -1,5 +1,6 @@
 import random as r
 import readline
+import shlex
 
 class Player(object):
     def __init__(self, name, init_mod):
@@ -88,29 +89,42 @@ class Commandline(object):
             try:
                 self.reset_completer() # commands can add their own
                                        # completers
-                cmd = raw_input("cmd> ").strip().lower().split()[0]
+                inputs = shlex.split(raw_input("cmd> ").strip().lower())
+                cmd = inputs[0]
+                tail = inputs[1:]
                 if cmd == 'exit':
                     print "Bye"
                     break
                 elif cmd == 'help':
-                    print self.help()
+                    print self.help(tail)
                 else:
                     try:
-                        self.commands[cmd]()
+                        self.commands[cmd](tail)
                     except KeyError:
                         print "Command not recognized."
+            except (KeyboardInterrupt, EOFError):
+                print "\nOK Bye!"
+                break
             except Exception as exp:
                 print exp
-                #print "Nope."
 
-    def help(self):
+    def help(self, args = None):
         "Gets a string of the available commands"
-        help_string = "Commands: "
-        for cmd in sorted(self.commands.keys()):
-            help_string += cmd + ", "
-        help_string += "help, exit"
-        return help_string
-        
+        if not args:
+            help_string = "Commands: "
+            for cmd in sorted(self.commands.keys()):
+                help_string += cmd + ", "
+            help_string += "help, exit"
+            return help_string
+        else:
+            help_cmd = args[0]
+            if help_cmd == "help":
+                return "Helps you."
+            try:
+                return "%s: %s" % (help_cmd, self.commands[help_cmd].cmddoc)
+            except KeyError:
+                return "Command '%s' not found" % help_cmd
+
 def ordinal(num):
     "Returns the number passed in with the correct ordinal suffix"
     ones_place = num % 10
@@ -146,7 +160,14 @@ def letterer(num):
         num = num / 26 - 1
         letters = chr(ord('A')+(num % 26)) + letters
     return letters
-        
+ 
+# decorator function
+def cmddoc(docstring):
+    """A decorator to add a .cmddoc property for the help command"""
+    def _cmddoc(func):
+        func.cmddoc = docstring
+        return func
+    return _cmddoc
         
 # Dice rolls
 
