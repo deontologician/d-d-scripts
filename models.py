@@ -1,5 +1,5 @@
 from sqlalchemy import (Column, Integer, String, Float, ForeignKey, Boolean,
-                        Enum, Date, Table, Index)
+                        Enum, Date, Table, Index, inspect)
 from sqlalchemy.orm import relationship
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.ext.associationproxy import association_proxy
@@ -15,6 +15,16 @@ WIS = 'Wisdom'
 CHA = 'Charisma'
 
 AbilityType = Enum(STR, CON, DEX, INT, WIS, CHA)
+
+
+def pretty(attrname):
+    '''Converts and attribute name to a user visible string'''
+    return attrname.replace('_', ' ').title()
+
+
+def pytype(column):
+    '''Gets the python type of a column'''
+    return column.type.python_type()
 
 
 class Base(DeclBase):
@@ -72,14 +82,6 @@ class Alignment(Base):
                      doc="Whether this alignment is chaotic")
 
 
-race_effect = Table(
-    'race_effect',
-    Base.metadata,
-    Column('racename', String, ForeignKey('race.name'), primary_key=True),
-    Column('effectname', String, ForeignKey('effect.name'), primary_key=True),
-)
-
-
 class Race(Base):
     '''Character race'''
     __tablename__ = 'race'
@@ -89,20 +91,19 @@ class Race(Base):
     sizename = Column(String, ForeignKey('size.name'),
                       default='Medium',
                       doc="Race's size")
-    vision = Column(Enum('Low-Light',
-                         'Darkvision',
-                         'Normal'),
-                    default="Normal",
-                    doc="Race's vision-level")
-    speed = Column(Integer, default=6,
-                   doc="Race's base speed in squares/round")
+    effectname = Column(String, ForeignKey('effect.name'),
+                        doc='Effect of being this race')
 
     size = relationship(Size)
-
     patron_deity = relationship('Deity',
                                 uselist=False,
                                 backref='patron_of_race')
-    effects = relationship('Effect', secondary=race_effect)
+    effect = relationship('Effect')
+
+    def __init__(self, name, **kwargs):
+        self.name = name
+        for attr, value in kwargs.iteritems():
+            setattr(self, attr, value)
 
 
 class_effect = Table(
@@ -280,22 +281,13 @@ class Effect(Base):
 
     name = Column(String, primary_key=True,
                   doc='Name of effect')
-
-    stats = relationship('Stat', innerjoin=True, lazy='joined',
-                         backref='effect')
-
-
-class Stat(Base):
-    '''Several stats make up an effect'''
-
-    __tablename__ = 'effectstat'
-
-    id = Column(Integer, primary_key=True, doc='Unique id of effect')
-    effectname = Column(String, ForeignKey('effect.name'),
-                        doc='Name of this effect this stat belongs to')
-    ability = Column(AbilityType, doc='Ability score affected')
-    ability_mod = Column(Integer, doc='Mod to ability score')
     max_hp = Column(Integer, doc="Mod to maximum hitpoints")
+    intelligence = Column(Integer, doc="Mod to intelligence")
+    constitution = Column(Integer, doc="Mod to constitution")
+    dexterity = Column(Integer, doc="Mod to dexterity")
+    wisdom = Column(Integer, doc="Mod to wisdom")
+    charisma = Column(Integer, doc="Mod to charisma")
+    strength = Column(Integer, doc="Mod to strength")
     initiative = Column(Integer, doc="Mod to initiative")
     fortitude = Column(Integer, doc="Mod to fortitude")
     will = Column(Integer, doc="Mod to will")
@@ -306,19 +298,94 @@ class Stat(Base):
     damage_mult = Column(Float, doc="Multiplier for damage")
     attack_roll = Column(Integer, doc="Mod to attack roll")
     saving_throw = Column(Integer, doc="Mod to saving throw roll")
+    healing_surges = Column(Integer, doc="Mod to healing surges")
+    vision = Column(Enum('Low-Light',
+                         'Darkvision',
+                         'Normal',
+                         'Blind'),
+                    doc="Change vision level to this")
+
+    stats = relationship('Stat', backref='effect')
+    languages = relationship('LanguageStat')
+    skills = relationship('SkillStat')
+    damages = relationship('DamageStat')
+
+    def __init__(self, name, **kwargs):
+        self.name = name
+        for attr, value in kwargs.iteritems():
+            setattr(self, attr, value)
+
+    def __str__(self):
+        mods = ['{0:+} {1}'.format(getattr(self, attr), pretty(attr))
+                for attr, col in inspect(self.__class__).columns.items()
+                if attr != 'name'
+                and isinstance(pytype(col), int)
+                and getattr(self, attr) is not None]
+        mods.extend('{} {}'.format(getattr(self, attr), attr.title())
+                    for attr, col in inspect(self.__class__).columns.items()
+                    if attr != 'name'
+                    and isinstance(pytype(col), str)
+                    and getattr(self, attr) is not None)
+        mods.extend(str(stat) for stat in self.stats)
+        return '{0.name}:\n  {1}'.format(self, '\n  '.join(mods))
+
+
+class Stat(Base):
+    '''Multiple stats can be part of a single effect'''
+
+    __tablename__ = 'stat'
+
+    id = Column(Integer, primary_key=True, doc='Unique id of stat')
+    effectname = Column(String, ForeignKey('effect.name'),
+                        doc='Name of the effect this stat belongs to')
+    stat_kind = Column(Enum('language', 'skill', 'damage'),
+                       nullable=False,
+                       doc='Kind of stat this is')
+    __table_args__ = (Index('stat_effectname_idx', effectname),)
+    __mapper_args__ = {'polymorphic_on': stat_kind}
+
+
+class LanguageStat(Stat):
+    '''Stat providing language comprehension'''
+    __mapper_args__ = {'polymorphic_identity': 'language'}
 
     language = Column(String, ForeignKey('language.name'),
                       doc="Language understanding bestowed")
+
+    def __init__(self, language):
+        self.language = language
+
+    def __repr__(self):
+        return 'Understands {}'.format(self.language)
+
+
+class SkillStat(Stat):
+    '''Stat modifying an skill'''
+    __mapper_args__ = {'polymorphic_identity': 'skill'}
 
     skillname = Column(String, ForeignKey('skill.name'),
                        doc="Name of skill modified")
     skill_mod = Column(Integer, doc='Mod to skill amount')
 
+    def __init__(self, skillname, skill_mod):
+        self.skillname = skillname
+        self.skill_mod = skill_mod
+
+    def __repr__(self):
+        return '{0.skill_mod:+} {0.skillname}'.format(self)
+
+
+class DamageStat(Stat):
+    '''Stat modifying a damage type amount'''
+    __mapper_args__ = {'polymorphic_identity': 'damage'}
+
     damagetype_name = Column(String, ForeignKey('damagetype.name'),
                              doc='Damage type resisted/weakened (null if any)')
     damagetype_mod = Column(Integer, doc='Mod to damage type')
 
-    __table_args__ = (Index('effect_name_idx', effectname), )
+    def __init__(self, damagetype_name, damagetype_mod):
+        self.damagetype_name = damagetype_name
+        self.damagetype_mod = damagetype_mod
 
 
 class CharacterEncounter(Base):

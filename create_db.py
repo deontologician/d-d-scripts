@@ -57,41 +57,26 @@ def initialize_database(session):
         M.Alignment(name='Evil', evil=True),
         M.Alignment(name='Chaotic Evil', evil=True, chaotic=True),
     ])
-    session.add_all([
-        # Default surges = 7
-        M.Class('Cleric', 'Divine', 'Leader'),
-        M.Class('Fighter', 'Martial', 'Defender', surges=9),
-        M.Class('Paladin', 'Divine', 'Defender', surges=10),
-        M.Class('Ranger', 'Martial', 'Striker', surges=6),
-        M.Class('Rogue', 'Martial', 'Striker', surges=6),
-        M.Class('Warlock', 'Arcane', 'Striker', surges=6),
-        M.Class('Warlord', 'Martial', 'Leader'),
-        M.Class('Wizard', 'Arcane', 'Controller', surges=6),
-        M.Class('Avenger', 'Divine', 'Striker'),
-        M.Class('Barbarian', 'Primal', 'Striker', surges=8),
-        M.Class('Bard', 'Arcane', 'Leader'),
-        M.Class('Druid', 'Primal', 'Controller'),
-        M.Class('Invoker', 'Divine', 'Controller', surges=6),
-        M.Class('Shaman', 'Primal', 'Leader'),
-        M.Class('Sorcerer', 'Arcane', 'Striker', surges=6),
-        M.Class('Warden', 'Primal', 'Defender', surges=9),
-    ])
-    session.add_all([
-        M.Race(name='Dragonborn'),
-        M.Race(name='Dwarf', vision='Low-Light', speed=5),
-        M.Race(name='Eladrin', vision='Low-Light'),
-        M.Race(name='Elf', vision='Low-Light', speed=7),
-        M.Race(name='Half-elf', vision='Low-Light'),
-        M.Race(name='Halfling', sizename='Small'),
-        M.Race(name='Human'),
-        M.Race(name='Tiefling', vision='Low-Light'),
-        M.Race(name='Deva'),
-        M.Race(name='Gnome', vision='Low-Light', speed=5, sizename='Small'),
-        M.Race(name='Goliath'),
-        M.Race(name='Half-Orc', vision='Low-Light'),
-        M.Race(name='Longtooth Shifter', vision='Low-Light'),
-        M.Race(name='Razorclaw Shifter', vision='Low-Light'),
-    ])
+    cleric = M.Class('Cleric', 'Divine', 'Leader')
+    fighter = M.Class('Fighter', 'Martial', 'Defender', surges=9)
+    paladin = M.Class('Paladin', 'Divine', 'Defender', surges=10)
+    ranger = M.Class('Ranger', 'Martial', 'Striker', surges=6)
+    rogue = M.Class('Rogue', 'Martial', 'Striker', surges=6)
+    warlock = M.Class('Warlock', 'Arcane', 'Striker', surges=6)
+    warlord = M.Class('Warlord', 'Martial', 'Leader')
+    wizard = M.Class('Wizard', 'Arcane', 'Controller', surges=6)
+    avenger = M.Class('Avenger', 'Divine', 'Striker')
+    barbarian = M.Class('Barbarian', 'Primal', 'Striker', surges=8)
+    bard = M.Class('Bard', 'Arcane', 'Leader')
+    druid = M.Class('Druid', 'Primal', 'Controller')
+    invoker = M.Class('Invoker', 'Divine', 'Controller', surges=6)
+    shaman = M.Class('Shaman', 'Primal', 'Leader')
+    sorcerer = M.Class('Sorcerer', 'Arcane', 'Striker', surges=6)
+    warden = M.Class('Warden', 'Primal', 'Defender', surges=9)
+    session.add_all([cleric, fighter, paladin, ranger, rogue, warlock, warlord,
+                     wizard, avenger, barbarian, bard, druid, invoker, shaman,
+                     sorcerer, warden])
+
     session.add_all([
         M.Deity(name='Avandra',
                 alignmentname='Good',
@@ -216,6 +201,128 @@ def initialize_database(session):
         M.Language(name='Supernal', script='Supernal'),
         M.Language(name='Abyssal', script='Barazhad'),
     ])
+    deva = M.Race(
+        'Deva',
+        effect=M.Effect(
+            'Deva Racial Benefits',
+            intelligence=+2,
+            wisdom=+2,
+            speed=6,
+            vision='Normal',
+            stats=[
+                M.SkillStat('History', +2),
+                M.SkillStat('Religion', +2),
+                M.LanguageStat('Common'),
+            ]))
+    dragonborn = M.Race(
+        'Dragonborn',
+        effect=M.Effect(
+            'Dragonborn Racial Benefits',
+            strength=+2,
+            charisma=+2,
+            vision='Normal',
+            speed=6,
+            stats=[
+                M.SkillStat('History', +2),
+                M.SkillStat('Intimidate', +2),
+                M.LanguageStat('Common'),
+                M.LanguageStat('Draconic'),
+            ]))
+    dwarf = M.Race(
+        'Dwarf',
+        effect=M.Effect(
+            'Dwarf Racial Benefits',
+            constitution=+2,
+            wisdom=+2,
+            vision='Low-Light',
+            speed=5,
+            stats=[
+                M.SkillStat('Dungeoneering', +2),
+                M.SkillStat('Endurance', +2),
+                M.LanguageStat('Common'),
+                M.LanguageStat('Dwarven'),
+            ]))
+    eladrin = M.Race(
+        'Eladrin',
+        effect=M.Effect(
+            'Eladrin Racial Benefits',
+            dexterity=+2,
+            intelligence=+2,
+            vision='Low-Light',
+            speed=6,
+            stats=[
+                M.SkillStat('History', +2),
+                M.SkillStat('Arcana', +2),
+                M.LanguageStat('Common'),
+                M.LanguageStat('Elven'),
+            ]))
+    elf = M.Race(
+        'Elf',
+        effect=M.Effect(
+            dexterity=+2,
+            wisdom=+2,
+            vision='Low-Light',
+            speed=7,
+            stats=[
+                M.SkillStat('Nature', +2),
+                M.SkillStat('Perception', +2),
+                M.LanguageStat('Common'),
+                M.LanguageStat('Elven'),
+            ]))
+    half_elf = M.Race(
+        'Half-elf',
+        effect=M.Effect(
+            constitution=+2,
+            charisma=+2,
+            vision='Low-Light',
+            speed=6,
+            stats=[
+                M.SkillStat('Diplomacy', +2),
+                M.SkillStat('Insight', +2),
+                M.LanguageStat('Common'),
+                M.LanguageStat('Elven'),
+            ]))
+    halfling = M.Race(
+        'Halfling',
+        sizename='Small',
+        effect=M.Effect(
+            dexterity=+2,
+            charisma=+2,
+            vision='Normal',
+            speed=6,
+            stats=[
+                M.SkillStat('Acrobatics', +2),
+                M.SkillStat('Thievery', +2),
+                M.LanguageStat('Common'),
+            ]))
+    human = M.Race(
+        'Human'
+        effect=M.Effect(
+            vision='Normal',
+            speed=6,
+            stats=[
+                M.LanguageStat('Common'),
+            ]))
+    tiefling = M.Race(
+        'Tiefling',
+        effect=M.Effect(
+            intelligence=+2,
+            charisma=+2,
+            vision='Low-Light',
+            speed=6,
+            stats=[
+                M.SkillStat('Bluff', +2),
+                M.SkillStat('Stealth', +2),
+                M.LanguageStat('Common'),
+            ]))
+    gnome = M.Race(name='Gnome', vision='Low-Light', speed=5, sizename='Small')
+    goliath = M.Race(name='Goliath')
+    half_orc = M.Race(name='Half-Orc', vision='Low-Light')
+    longtooth_shifter = M.Race(name='Longtooth Shifter', vision='Low-Light')
+    razorclaw_shifter = M.Race(name='Razorclaw Shifter', vision='Low-Light')
+    session.add_all([deva, dragonborn, dwarf, eladrin, elf, half_elf, halfling,
+                     human, tiefling, gnome, goliath, half_orc,
+                     longtooth_shifter, razorclaw_shifter])
 
 
 def get_session(db_name):
