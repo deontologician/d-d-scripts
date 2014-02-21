@@ -19,6 +19,14 @@ def setup_db(db_filename):
 def initialize_database(session):
     '''Sets up all reference tables'''
     session.add_all([
+        M.Dice(name='d4', sides=4),
+        M.Dice(name='d6', sides=6),
+        M.Dice(name='d8', sides=8),
+        M.Dice(name='d10', sides=10),
+        M.Dice(name='d12', sides=12),
+        M.Dice(name='d20', sides=20),
+    ])
+    session.add_all([
         M.Size(name='Tiny', space=0.5),
         M.Size(name='Small', space=1),
         M.Size(name='Medium', space=1),
@@ -56,6 +64,43 @@ def initialize_database(session):
         M.Alignment(name='Unaligned'),
         M.Alignment(name='Evil', evil=True),
         M.Alignment(name='Chaotic Evil', evil=True, chaotic=True),
+    ])
+    session.add_all([
+        M.WeaponGroup(name='Axe'),
+        M.WeaponGroup(name='Bow'),
+        M.WeaponGroup(name='CrossBow'),
+        M.WeaponGroup(name='Flail'),
+        M.WeaponGroup(name='Hammer'),
+        M.WeaponGroup(name='Heavy Blade'),
+        M.WeaponGroup(name='Light Blade'),
+        M.WeaponGroup(name='Mace'),
+        M.WeaponGroup(name='Pick'),
+        M.WeaponGroup(name='Polearm'),
+        M.WeaponGroup(name='Sling'),
+        M.WeaponGroup(name='Spear'),
+        M.WeaponGroup(name='Staff'),
+        M.WeaponGroup(name='Unarmed'),
+    ])
+    session.add_all([
+        M.WeaponProperty('Heavy Thrown'),
+        M.WeaponProperty('High Crit'),
+        M.WeaponProperty('Light Thrown'),
+        M.WeaponProperty('Load Free'),
+        M.WeaponProperty('Load Minor'),
+        M.WeaponProperty('Off-Hand'),
+        M.WeaponProperty('Reach'),
+        M.WeaponProperty('Small'),
+        M.WeaponProperty('Versatile'),
+    ])
+    session.add_all([
+        M.WeaponCategory('Simple Melee', simple=True, melee=True),
+        M.WeaponCategory('Military Melee', military=True, melee=True),
+        M.WeaponCategory('Superior Melee', superior=True, melee=True),
+        M.WeaponCategory('Improvised Melee', improvised=True, melee=True),
+        M.WeaponCategory('Simple Ranged', simple=True, ranged=True),
+        M.WeaponCategory('Military Ranged', military=True, ranged=True),
+        M.WeaponCategory('Superior Ranged', superior=True, ranged=True),
+        M.WeaponCategory('Improvised Ranged', improvised=True, ranged=True),
     ])
     cleric = M.Class('Cleric', 'Divine', 'Leader')
     fighter = M.Class('Fighter', 'Martial', 'Defender', surges=9)
@@ -270,7 +315,7 @@ def initialize_database(session):
                 M.LanguageStat('Elven'),
             ]))
     half_elf = M.Race(
-        'Half-elf',
+        'Half-Elf',
         effect=M.Effect(
             constitution=+2,
             charisma=+2,
@@ -296,10 +341,13 @@ def initialize_database(session):
                 M.LanguageStat('Common'),
             ]))
     human = M.Race(
-        'Human'
+        'Human',
         effect=M.Effect(
             vision='Normal',
             speed=6,
+            fortitude=+1,
+            reflex=+1,
+            will=+1,
             stats=[
                 M.LanguageStat('Common'),
             ]))
@@ -315,11 +363,70 @@ def initialize_database(session):
                 M.SkillStat('Stealth', +2),
                 M.LanguageStat('Common'),
             ]))
-    gnome = M.Race(name='Gnome', vision='Low-Light', speed=5, sizename='Small')
-    goliath = M.Race(name='Goliath')
-    half_orc = M.Race(name='Half-Orc', vision='Low-Light')
-    longtooth_shifter = M.Race(name='Longtooth Shifter', vision='Low-Light')
-    razorclaw_shifter = M.Race(name='Razorclaw Shifter', vision='Low-Light')
+    gnome = M.Race(
+        'Gnome',
+        sizename='Small',
+        effect=M.Effect(
+            intelligence=+2,
+            charisma=+2,
+            vision='Low-Light',
+            speed=5,
+            stats=[
+                M.SkillStat('Arcana', +2),
+                M.SkillStat('Stealth', +2),
+                M.LanguageStat('Common'),
+                M.LanguageStat('Elven'),
+            ]))
+    goliath = M.Race(
+        'Goliath',
+        effect=M.Effect(
+            strength=+2,
+            constitution=+2,
+            vision='Normal',
+            speed=6,
+            stats=[
+                M.SkillStat('Athletics', +2),
+                M.SkillStat('Nature', +2),
+                M.LanguageStat('Common'),
+            ]))
+    half_orc = M.Race(
+        'Half-Orc',
+        effect=M.Effect(
+            strength=+2,
+            dexterity=+2,
+            vision='Low-Light',
+            speed=6,
+            will=+1,
+            stats=[
+                M.SkillStat('Endurance', +2),
+                M.SkillStat('Intimidate', +2),
+                M.LanguageStat('Common'),
+                M.LanguageStat('Giant'),
+            ]))
+    longtooth_shifter = M.Race(
+        'Longtooth Shifter',
+        effect=M.Effect(
+            strength=+2,
+            wisdom=+2,
+            vision='Low-Light',
+            speed=6,
+            stats=[
+                M.SkillStat('Athletics', +2),
+                M.SkillStat('Endurance', +2),
+                M.LanguageStat('Common'),
+            ]))
+    razorclaw_shifter = M.Race(
+        'Razorclaw Shifter',
+        effect=M.Effect(
+            strength=+2,
+            wisdom=+2,
+            vision='Low-Light',
+            speed=6,
+            stats=[
+                M.SkillStat('Acrobatics', +2),
+                M.SkillStat('Stealth', +2),
+                M.LanguageStat('Common'),
+            ]))
     session.add_all([deva, dragonborn, dwarf, eladrin, elf, half_elf, halfling,
                      human, tiefling, gnome, goliath, half_orc,
                      longtooth_shifter, razorclaw_shifter])

@@ -54,6 +54,91 @@ class Language(Base):
     script = Column(String, doc='Script language is written in')
 
 
+class Dice(Base):
+    '''Dice types'''
+    __tablename__ = 'dice'
+
+    name = Column(String, primary_key=True, doc='Dice name')
+    sides = Column(Integer, nullable=False,
+                   doc='Number of sides on the die')
+
+
+class WeaponGroup(Base):
+    '''Groups of Weapons'''
+    __tablename__ = 'weapongroup'
+
+    name = Column(String, primary_key=True,
+                  doc='Name of weapon group')
+
+
+class WeaponProperty(Base):
+    '''Properties Weapons may have'''
+    __tablename__ = 'weaponproperty'
+
+    name = Column(String, primary_key=True,
+                  doc='Name of weapon property')
+
+    def __init__(self, name):
+        self.name = name
+
+
+class WeaponCategory(Base):
+    '''Categories to which a weapon can belong'''
+    __tablename__ = 'weaponcategory'
+
+    name = Column(String, primary_key=True,
+                  doc='Name of weapon category')
+    melee = Column(Boolean, default=False,
+                   doc='Weather weapons in this category are melee')
+    ranged = Column(Boolean, default=False,
+                    doc='Weather weapons in this category are ranged')
+    simple = Column(Boolean, default=False,
+                    doc='Weather weapons in this category are simple')
+    military = Column(Boolean, default=False,
+                      doc='Weather weapons in this category are military')
+    superior = Column(Boolean, default=False,
+                      doc='Weather weapons in this category are superior')
+    improvised = Column(Boolean, default=False,
+                        doc='Weather weapons in this category are improvised')
+
+    def __init__(self, name, **kwargs):
+        self.name = name
+        for attr, value in kwargs.iteritems():
+            setattr(self, attr, value)
+
+
+weapon_weaponproperty = Table(
+    'weapon_weaponproperty',
+    Base.metadata,
+    Column('weaponname', String, ForeignKey('weapon.name'), primary_key=True),
+    Column('propertyname', String,
+           ForeignKey('weaponproperty.name'), primary_key=True),
+)
+
+
+class Weapon(Base):
+    '''Weapons'''
+    __tablename__ = 'weapon'
+
+    name = Column(String, primary_key=True,
+                  doc='Name of the weapon')
+    proficiency_bonus = Column(
+        Integer, default=+2, doc="Bonus to attack if character is proficient")
+    dmg_mult = Column(Integer, default=1,
+                      doc='Number of dice to roll for damage')
+    dicename = Column(String, ForeignKey('dice.name'),
+                      doc='Dice to roll for damage')
+    groupname = Column(String, ForeignKey('weapongroup.name'),
+                       doc='Weapon group this weapon belongs to')
+    categoryname = Column(String, ForeignKey('weaponcategory.name'),
+                          doc='Category this weapon belongs to')
+    handedness = Column(Enum('One-Handed', 'Two-Handed'), default='One-Handed',
+                        doc='How many hands this weapon takes to wield'),
+    properties = relationship(WeaponProperty,
+                              secondary=weapon_weaponproperty,
+                              backref='weapons')
+
+
 class DamageType(Base):
     '''Damage types'''
     __tablename__ = 'damagetype'
