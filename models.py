@@ -1,8 +1,9 @@
+from collections import Sized, Iterable
 from sqlalchemy import (Column, Integer, String, Float, ForeignKey, Boolean,
                         Enum, Date, Table, Index, inspect)
 from sqlalchemy.orm import relationship
 from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.ext.associationproxy import association_proxy
+from sqlalchemy.ext import associationproxy
 from sqlalchemy.ext.orderinglist import ordering_list
 
 DeclBase = declarative_base()
@@ -27,84 +28,123 @@ def pytype(column):
     return column.type.python_type()
 
 
+def JSONColumn(*args, **kwargs):
+    '''Adds an info to the Column indicating the attribute should be serialized
+    to json'''
+    return Column(*args, info={'jsonify': True}, **kwargs)
+
+
+def jsonrelationship(*args, **kwargs):
+    '''Adds an info indicating the relationship should be serialized to json'''
+    return relationship(*args, info={'jsonify': True}, **kwargs)
+
+
+def jsonassociation_proxy(*args, **kwargs):
+    '''Adds an info property to an association proxy'''
+    ap = association_proxy(*args, **kwargs)
+    ap.info = {'jsonify': True}
+    return ap
+
+
+def association_proxy(*args, **kwargs):
+    '''Add an info property to association_proxy since one doesn't exist'''
+    ap = associationproxy.association_proxy(*args, **kwargs)
+    ap.info = {'jsonify': False}
+    return ap
+
+
 class Base(DeclBase):
     '''Common functionality'''
     __abstract__ = True
+    __json_null__ = True
 
     def __repr__(self):
         tpl = '{classname}:({name})'
         return tpl.format(classname=self.__class__.__name__, name=self.name)
+
+    def __init__(self, name, **kwargs):
+        self.name = name
+        for attr, value in kwargs.iteritems():
+            setattr(self, attr, value)
+
+    def json(self):
+        jsonify = lambda obj: obj.json() if hasattr(obj, 'json') else obj
+
+        jsonout = {}
+
+        for attr, prop in inspect(self.__class__).all_orm_descriptors.items():
+            if hasattr(prop, 'info') and prop.info.get('jsonify'):
+                value = getattr(self, attr)
+                if self.__json_null__ or value is False or value:
+                    if isinstance(value, (Sized, Iterable)) \
+                        and not isinstance(value, basestring):
+                        jsonout[attr] = [jsonify(p) for p in value]
+                    else:
+                        jsonout[attr] = jsonify(value)
+        return jsonout
 
 
 class Size(Base):
     '''Size classes'''
     __tablename__ = 'size'
 
-    name = Column(String, primary_key=True, doc="Size name")
-    space = Column(Float,
-                   doc="length of side of square this size fills."
-                   " e.g. 4 = 4x4")
+    name = JSONColumn(String, primary_key=True, doc="Size name")
+    space = JSONColumn(Float,
+                       doc="length of side of square this size fills."
+                       " e.g. 4 = 4x4")
 
 
 class Language(Base):
     '''Languages'''
     __tablename__ = 'language'
 
-    name = Column(String, primary_key=True, doc='Name of language')
-    script = Column(String, doc='Script language is written in')
+    name = JSONColumn(String, primary_key=True, doc='Name of language')
+    script = JSONColumn(String, doc='Script language is written in')
 
 
 class Dice(Base):
     '''Dice types'''
     __tablename__ = 'dice'
 
-    name = Column(String, primary_key=True, doc='Dice name')
-    sides = Column(Integer, nullable=False,
-                   doc='Number of sides on the die')
+    name = JSONColumn(String, primary_key=True, doc='Dice name')
+    sides = JSONColumn(Integer, nullable=False,
+                       doc='Number of sides on the die')
 
 
 class WeaponGroup(Base):
     '''Groups of Weapons'''
     __tablename__ = 'weapongroup'
 
-    name = Column(String, primary_key=True,
-                  doc='Name of weapon group')
+    name = JSONColumn(String, primary_key=True,
+                      doc='Name of weapon group')
 
 
 class WeaponProperty(Base):
     '''Properties Weapons may have'''
     __tablename__ = 'weaponproperty'
 
-    name = Column(String, primary_key=True,
-                  doc='Name of weapon property')
-
-    def __init__(self, name):
-        self.name = name
+    name = JSONColumn(String, primary_key=True,
+                      doc='Name of weapon property')
 
 
 class WeaponCategory(Base):
     '''Categories to which a weapon can belong'''
     __tablename__ = 'weaponcategory'
 
-    name = Column(String, primary_key=True,
-                  doc='Name of weapon category')
-    melee = Column(Boolean, default=False,
-                   doc='Weather weapons in this category are melee')
-    ranged = Column(Boolean, default=False,
-                    doc='Weather weapons in this category are ranged')
-    simple = Column(Boolean, default=False,
-                    doc='Weather weapons in this category are simple')
-    military = Column(Boolean, default=False,
-                      doc='Weather weapons in this category are military')
-    superior = Column(Boolean, default=False,
-                      doc='Weather weapons in this category are superior')
-    improvised = Column(Boolean, default=False,
-                        doc='Weather weapons in this category are improvised')
-
-    def __init__(self, name, **kwargs):
-        self.name = name
-        for attr, value in kwargs.iteritems():
-            setattr(self, attr, value)
+    name = JSONColumn(String, primary_key=True,
+        doc='Name of weapon category')
+    melee = JSONColumn(Boolean, default=False,
+        doc='Whether weapons in this category are melee')
+    ranged = JSONColumn(Boolean, default=False,
+        doc='Whether weapons in this category are ranged')
+    simple = JSONColumn(Boolean, default=False,
+        doc='Whether weapons in this category are simple')
+    military = JSONColumn(Boolean, default=False,
+        doc='Whether weapons in this category are military')
+    superior = JSONColumn(Boolean, default=False,
+        doc='Whether weapons in this category are superior')
+    improvised = JSONColumn(Boolean, default=False,
+        doc='Whether weapons in this category are improvised')
 
 
 weapon_weaponproperty = Table(
@@ -120,32 +160,37 @@ class Weapon(Base):
     '''Weapons'''
     __tablename__ = 'weapon'
 
-    name = Column(String, primary_key=True,
-                  doc='Name of the weapon')
-    proficiency_bonus = Column(
+    name = JSONColumn(String, primary_key=True,
+                      doc='Name of the weapon')
+    proficiency_bonus = JSONColumn(
         Integer, default=+2, doc="Bonus to attack if character is proficient")
-    dmg_mult = Column(Integer, default=1,
-                      doc='Number of dice to roll for damage')
-    dicename = Column(String, ForeignKey('dice.name'),
-                      doc='Dice to roll for damage')
-    groupname = Column(String, ForeignKey('weapongroup.name'),
-                       doc='Weapon group this weapon belongs to')
-    categoryname = Column(String, ForeignKey('weaponcategory.name'),
-                          doc='Category this weapon belongs to')
-    handedness = Column(Enum('One-Handed', 'Two-Handed'), default='One-Handed',
-                        doc='How many hands this weapon takes to wield'),
-    properties = relationship(WeaponProperty,
-                              secondary=weapon_weaponproperty,
-                              backref='weapons')
+    dmg_mult = JSONColumn(
+        Integer, default=1, doc='Number of dice to roll for damage')
+    dicename = JSONColumn(
+        String, ForeignKey('dice.name'), doc='Dice to roll for damage')
+    groupname = JSONColumn(String,
+                           ForeignKey('weapongroup.name'),
+                           doc='Weapon group this weapon belongs to')
+    categoryname = JSONColumn(String,
+                              ForeignKey('weaponcategory.name'),
+                              doc='Category this weapon belongs to')
+    handedness = JSONColumn(Enum('One-Handed', 'Two-Handed'),
+                            default='One-Handed',
+                            doc='How many hands this weapon takes to wield')
+
+    properties = jsonrelationship(WeaponProperty,
+                                  secondary=weapon_weaponproperty,
+                                  backref='weapons')
 
 
 class DamageType(Base):
     '''Damage types'''
     __tablename__ = 'damagetype'
 
-    name = Column(String, primary_key=True,
-                  doc='Name of damage type')
-    description = Column(String, doc='detailed description of the damage type')
+    name = JSONColumn(String, primary_key=True,
+                      doc='Name of damage type')
+    description = JSONColumn(
+        String, doc='detailed description of the damage type')
 
     def __init__(self, name, description):
         self.name = name
@@ -156,14 +201,14 @@ class Alignment(Base):
     '''Alignments'''
     __tablename__ = 'alignment'
 
-    name = Column(String, primary_key=True, doc="Alignment Name")
-    good = Column(Boolean, default=False,
+    name = JSONColumn(String, primary_key=True, doc="Alignment Name")
+    good = JSONColumn(Boolean, default=False,
                   doc="Whether this alignment is good")
-    evil = Column(Boolean, default=False,
+    evil = JSONColumn(Boolean, default=False,
                   doc="Whether this alignment is evil")
-    lawful = Column(Boolean, default=False,
+    lawful = JSONColumn(Boolean, default=False,
                     doc="Whether this alignment is lawful")
-    chaotic = Column(Boolean, default=False,
+    chaotic = JSONColumn(Boolean, default=False,
                      doc="Whether this alignment is chaotic")
 
 
@@ -171,24 +216,32 @@ class Race(Base):
     '''Character race'''
     __tablename__ = 'race'
 
-    name = Column(String, primary_key=True,
-                  doc="Race's name")
+    name = JSONColumn(String, primary_key=True,
+                      doc="Race's name")
     sizename = Column(String, ForeignKey('size.name'),
                       default='Medium',
                       doc="Race's size")
     effectname = Column(String, ForeignKey('effect.name'),
                         doc='Effect of being this race')
 
-    size = relationship(Size)
-    patron_deity = relationship('Deity',
-                                uselist=False,
-                                backref='patron_of_race')
-    effect = relationship('Effect')
+    size = jsonrelationship(Size)
+    patron_deity = jsonrelationship('Deity',
+                                    uselist=False,
+                                    backref='patron_of_race')
+    effect = jsonrelationship('Effect')
 
-    def __init__(self, name, **kwargs):
+
+class PowerSource(Base):
+    '''A source of a class's power'''
+    __tablename__ = 'powersource'
+
+    name = JSONColumn(String, primary_key=True,
+                      doc='Name of the power source')
+    description = JSONColumn(String, doc='Description of the power source')
+
+    def __init__(self, name, description):
         self.name = name
-        for attr, value in kwargs.iteritems():
-            setattr(self, attr, value)
+        self.description = description
 
 
 class_effect = Table(
@@ -202,27 +255,20 @@ class_effect = Table(
 class Class(Base):
     '''Character classes'''
     __tablename__ = 'class'
-    name = Column(String, primary_key=True, doc="Class name")
-    power_source = Column(Enum('Arcane',
-                               'Divine',
-                               'Martial',
-                               'Primal'),
-                          doc="Class's power source")
-    role = Column(Enum('Leader',
-                       'Controller',
-                       'Striker',
-                       'Defender'),
-                  doc="Class's role in a party")
-    surges = Column(
-        Integer, default=7,
-        doc='Number of healing surges this class starts out with')
-    effects = relationship('Effect', secondary=class_effect)
+    name = JSONColumn(String, primary_key=True, doc="Class name")
+    powersource_name = JSONColumn(String, ForeignKey('powersource.name'),
+                                  doc="Class's power source")
+    role = JSONColumn(Enum('Leader',
+                           'Controller',
+                           'Striker',
+                           'Defender'),
+                      doc="Class's role in a party")
+    effects = jsonrelationship('Effect', secondary=class_effect)
 
-    def __init__(self, name, power_source, role, **kwargs):
-        self.name = name
-        self.power_source = power_source
+    def __init__(self, name, powersource_name, role, **kwargs):
+        self.powersource_name = powersource_name
         self.role = role
-        super(Class, self).__init__(**kwargs)
+        super(Class, self).__init__(name, **kwargs)
 
 
 class DeityDomain(Base):
@@ -231,37 +277,24 @@ class DeityDomain(Base):
 
     deityname = Column(String, ForeignKey('deity.name'),
                        doc='Deity this domain applies to')
-    name = Column(String, primary_key=True, doc='Name of domain')
-
-    def __init__(self, name):
-        self.name = name
+    name = JSONColumn(String, primary_key=True, doc='Name of domain')
 
 
 class Deity(Base):
     '''Deitys'''
     __tablename__ = 'deity'
 
-    name = Column(String, primary_key=True, doc="Deity's name")
-    alignmentname = Column(String, ForeignKey('alignment.name'),
-                           doc="God's alignment")
-    patron_of = Column(String, ForeignKey('race.name'),
-                       doc='Race this Deity is a patron of')
-    season = Column(Enum('Spring', 'Summer', 'Autumn', 'Winter'),
-                    nullable=True,
-                    doc="Deity's season (if any)")
+    name = JSONColumn(String, primary_key=True, doc="Deity's name")
+    alignmentname = JSONColumn(String, ForeignKey('alignment.name'),
+                               doc="Deity's alignment")
+    patron_of = JSONColumn(String, ForeignKey('race.name'),
+                           doc='Race this Deity is a patron of')
+    season = JSONColumn(Enum('Spring', 'Summer', 'Autumn', 'Winter'),
+                        doc="Deity's season (if any)")
 
     domain_models = relationship(DeityDomain, backref='deity')
     domains = association_proxy('domain_models', 'name')
     alignment = relationship(Alignment)
-
-    def __init__(self, name, alignmentname=None, domains=None,
-                 patron_of=None, season=None):
-        self.name = name
-        self.alignmentname = alignmentname
-        if domains:
-            self.domains = domains
-        self.patron_of = patron_of
-        self.season = season
 
 
 class Character(Base):
@@ -363,42 +396,39 @@ class Skill(Base):
 class Effect(Base):
     '''Ongoing effects that apply to characters'''
     __tablename__ = 'effect'
+    __json_null__ = False
 
-    name = Column(String, primary_key=True,
-                  doc='Name of effect')
-    max_hp = Column(Integer, doc="Mod to maximum hitpoints")
-    intelligence = Column(Integer, doc="Mod to intelligence")
-    constitution = Column(Integer, doc="Mod to constitution")
-    dexterity = Column(Integer, doc="Mod to dexterity")
-    wisdom = Column(Integer, doc="Mod to wisdom")
-    charisma = Column(Integer, doc="Mod to charisma")
-    strength = Column(Integer, doc="Mod to strength")
-    initiative = Column(Integer, doc="Mod to initiative")
-    fortitude = Column(Integer, doc="Mod to fortitude")
-    will = Column(Integer, doc="Mod to will")
-    reflex = Column(Integer, doc="Mod to reflex")
-    armor_class = Column(Integer, doc="Mod to armor class")
-    speed = Column(Integer, doc="Mod to speed")
-    damage = Column(Integer, doc="Mod to damage")
-    damage_mult = Column(Float, doc="Multiplier for damage")
-    attack_roll = Column(Integer, doc="Mod to attack roll")
-    saving_throw = Column(Integer, doc="Mod to saving throw roll")
-    healing_surges = Column(Integer, doc="Mod to healing surges")
-    vision = Column(Enum('Low-Light',
-                         'Darkvision',
-                         'Normal',
-                         'Blind'),
-                    doc="Change vision level to this")
+    name = JSONColumn(String, primary_key=True, doc='Name of effect')
+    max_hp = JSONColumn(Integer, doc="Mod to maximum hitpoints")
+    intelligence = JSONColumn(Integer, doc="Mod to intelligence")
+    constitution = JSONColumn(Integer, doc="Mod to constitution")
+    dexterity = JSONColumn(Integer, doc="Mod to dexterity")
+    wisdom = JSONColumn(Integer, doc="Mod to wisdom")
+    charisma = JSONColumn(Integer, doc="Mod to charisma")
+    strength = JSONColumn(Integer, doc="Mod to strength")
+    initiative = JSONColumn(Integer, doc="Mod to initiative")
+    fortitude = JSONColumn(Integer, doc="Mod to fortitude")
+    will = JSONColumn(Integer, doc="Mod to will")
+    reflex = JSONColumn(Integer, doc="Mod to reflex")
+    armor_class = JSONColumn(Integer, doc="Mod to armor class")
+    speed = JSONColumn(Integer, doc="Mod to speed")
+    damage = JSONColumn(Integer, doc="Mod to damage")
+    damage_mult = JSONColumn(Float, doc="Multiplier for damage")
+    attack_roll = JSONColumn(Integer, doc="Mod to attack roll")
+    saving_throw = JSONColumn(Integer, doc="Mod to saving throw roll")
+    healing_surges = JSONColumn(Integer, doc="Mod to healing surges")
+    vision = JSONColumn(Enum('Low-Light',
+                             'Darkvision',
+                             'Normal',
+                             'Blind'),
+                        doc="Change vision level to this")
 
     stats = relationship('Stat', backref='effect')
-    languages = relationship('LanguageStat')
-    skills = relationship('SkillStat')
-    damages = relationship('DamageStat')
+    language_stats = relationship('LanguageStat')
+    skill_stats = jsonrelationship('SkillStat')
+    damage_stats = jsonrelationship('DamageStat')
 
-    def __init__(self, name, **kwargs):
-        self.name = name
-        for attr, value in kwargs.iteritems():
-            setattr(self, attr, value)
+    languages = jsonassociation_proxy('language_stats', 'language')
 
     def __str__(self):
         mods = ['{0:+} {1}'.format(getattr(self, attr), pretty(attr))
@@ -434,8 +464,8 @@ class LanguageStat(Stat):
     '''Stat providing language comprehension'''
     __mapper_args__ = {'polymorphic_identity': 'language'}
 
-    language = Column(String, ForeignKey('language.name'),
-                      doc="Language understanding bestowed")
+    language = JSONColumn(String, ForeignKey('language.name'),
+                          doc="Language understanding bestowed")
 
     def __init__(self, language):
         self.language = language
@@ -448,9 +478,9 @@ class SkillStat(Stat):
     '''Stat modifying an skill'''
     __mapper_args__ = {'polymorphic_identity': 'skill'}
 
-    skillname = Column(String, ForeignKey('skill.name'),
-                       doc="Name of skill modified")
-    skill_mod = Column(Integer, doc='Mod to skill amount')
+    skillname = JSONColumn(String, ForeignKey('skill.name'),
+                           doc="Name of skill modified")
+    skill_mod = JSONColumn(Integer, doc='Mod to skill amount')
 
     def __init__(self, skillname, skill_mod):
         self.skillname = skillname
@@ -464,9 +494,9 @@ class DamageStat(Stat):
     '''Stat modifying a damage type amount'''
     __mapper_args__ = {'polymorphic_identity': 'damage'}
 
-    damagetype_name = Column(String, ForeignKey('damagetype.name'),
+    damagetype_name = JSONColumn(String, ForeignKey('damagetype.name'),
                              doc='Damage type resisted/weakened (null if any)')
-    damagetype_mod = Column(Integer, doc='Mod to damage type')
+    damagetype_mod = JSONColumn(Integer, doc='Mod to damage type')
 
     def __init__(self, damagetype_name, damagetype_mod):
         self.damagetype_name = damagetype_name
@@ -475,20 +505,20 @@ class DamageStat(Stat):
 
 class CharacterEncounter(Base):
     '''Links a player to an encounter in initiative order'''
-    __tablename__ = 'encounter_init'
+    __tablename__ = 'character_encounter'
 
-    charactername = Column(String, ForeignKey('character.name'),
-                           primary_key=True,
-                           doc='Character in initiative')
-    encounter_id = Column(Integer, ForeignKey('encounter.id'),
+    charactername = JSONColumn(String, ForeignKey('character.name'),
+                               primary_key=True,
+                               doc='Character in initiative')
+    encounter_id = Column(Integer, ForeignKey('encounter.name'),
                           primary_key=True,
                           doc='Encounter this init roll is for')
-    init_score = Column(
-        Integer, doc='Initiative rolled for this encounter')
+    init_score = JSONColumn(Integer,
+                            doc='Initiative rolled for this encounter')
     position = Column(Integer, doc='Current position in the initiative order')
-    second_wind = Column(Boolean, default=False,
-                         doc='Whether the character still has a '
-                             'second wind for this encounter.')
+    second_wind_used = JSONColumn(Boolean, default=False,
+                                  doc='Whether the character still has a '
+                                  'second wind for this encounter.')
 
     character = relationship('Character', innerjoin=True, lazy='joined')
 
@@ -497,17 +527,30 @@ class Encounter(Base):
     '''Represents a single encounter'''
     __tablename__ = 'encounter'
 
-    id = Column(Integer, primary_key=True,
-                doc="Unique Encounter identifier")
-    name = Column(String, doc="Name of Encounter")
-    session_id = Column(Integer, ForeignKey('session.id'),
-                        doc='Session this encounter belongs to')
+    name = JSONColumn(String, primary_key=True, doc="Name of Encounter")
+    sessionname = Column(String, ForeignKey('session.name'),
+                         doc='Session this encounter belongs to')
 
     session = relationship('Session', backref='encounters')
-    init_order = relationship('CharacterEncounter',
-                              order_by='CharacterEncounter.position',
-                              lazy='joined',
-                              collection_class=ordering_list('position'))
+    init_order = jsonrelationship('CharacterEncounter',
+                                  order_by='CharacterEncounter.position',
+                                  lazy='joined',
+                                  collection_class=ordering_list('position'))
+    players = jsonrelationship(
+        'Character',
+        secondary='character_encounter',
+        secondaryjoin='and_('
+        'CharacterEncounter.charactername == Character.name, '
+        'Character.is_player)',
+        order_by=Character.name)
+    monsters = jsonrelationship(
+        'Character',
+        secondary='character_encounter',
+        secondaryjoin='and_('
+        'CharacterEncounter.charactername == Character.name, '
+        '~Character.is_player'
+        ')',
+        order_by=Character.name)
     initiative = association_proxy('init_order', 'character')
 
 
@@ -515,6 +558,6 @@ class Session(Base):
     '''Play sessions'''
     __tablename__ = 'session'
 
-    id = Column(Integer, primary_key=True,
-                doc="Unique session identifier")
-    date = Column(Date, doc="date session occurred on")
+    name = JSONColumn(String, primary_key=True,
+                      doc='Name of this Session')
+    date = JSONColumn(Date, doc="date session occurred on")

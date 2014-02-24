@@ -19,20 +19,34 @@ def setup_db(db_filename):
 def initialize_database(session):
     '''Sets up all reference tables'''
     session.add_all([
-        M.Dice(name='d4', sides=4),
-        M.Dice(name='d6', sides=6),
-        M.Dice(name='d8', sides=8),
-        M.Dice(name='d10', sides=10),
-        M.Dice(name='d12', sides=12),
-        M.Dice(name='d20', sides=20),
+        M.Dice('d4', sides=4),
+        M.Dice('d6', sides=6),
+        M.Dice('d8', sides=8),
+        M.Dice('d10', sides=10),
+        M.Dice('d12', sides=12),
+        M.Dice('d20', sides=20),
     ])
     session.add_all([
-        M.Size(name='Tiny', space=0.5),
-        M.Size(name='Small', space=1),
-        M.Size(name='Medium', space=1),
-        M.Size(name='Large', space=2),
-        M.Size(name='Huge', space=3),
-        M.Size(name='Gargantuan', space=4),
+        M.Size('Tiny', space=0.5),
+        M.Size('Small', space=1),
+        M.Size('Medium', space=1),
+        M.Size('Large', space=2),
+        M.Size('Huge', space=3),
+        M.Size('Gargantuan', space=4),
+    ])
+    session.add_all([
+        M.PowerSource('Martial',
+                      'Represents military training or general '
+                      'prowess with physical weaponry'),
+        M.PowerSource('Divine',
+                      'represents that powers come due to a '
+                      'connection with a deity or the spiritual realm'),
+        M.PowerSource('Arcane', 'Your powers come from magical sources'),
+        M.PowerSource('Psionic', 'Your powers are mental'),
+        M.PowerSource('Primal', 'Your powers come from a deep connection '
+                      'to the world and the spirits'),
+        M.PowerSource('Shadow', 'Your powers come form opening a well of '
+                      'energy from the Shadowfell')
     ])
     session.add_all([
         M.DamageType('Acid',
@@ -59,27 +73,27 @@ def initialize_database(session):
                      'Shock waves and deafening sounds'),
     ])
     session.add_all([
-        M.Alignment(name='Lawful Good', good=True, lawful=True),
-        M.Alignment(name='Good', good=True),
-        M.Alignment(name='Unaligned'),
-        M.Alignment(name='Evil', evil=True),
-        M.Alignment(name='Chaotic Evil', evil=True, chaotic=True),
+        M.Alignment('Lawful Good', good=True, lawful=True),
+        M.Alignment('Good', good=True),
+        M.Alignment('Unaligned'),
+        M.Alignment('Evil', evil=True),
+        M.Alignment('Chaotic Evil', evil=True, chaotic=True),
     ])
     session.add_all([
-        M.WeaponGroup(name='Axe'),
-        M.WeaponGroup(name='Bow'),
-        M.WeaponGroup(name='CrossBow'),
-        M.WeaponGroup(name='Flail'),
-        M.WeaponGroup(name='Hammer'),
-        M.WeaponGroup(name='Heavy Blade'),
-        M.WeaponGroup(name='Light Blade'),
-        M.WeaponGroup(name='Mace'),
-        M.WeaponGroup(name='Pick'),
-        M.WeaponGroup(name='Polearm'),
-        M.WeaponGroup(name='Sling'),
-        M.WeaponGroup(name='Spear'),
-        M.WeaponGroup(name='Staff'),
-        M.WeaponGroup(name='Unarmed'),
+        M.WeaponGroup('Axe'),
+        M.WeaponGroup('Bow'),
+        M.WeaponGroup('CrossBow'),
+        M.WeaponGroup('Flail'),
+        M.WeaponGroup('Hammer'),
+        M.WeaponGroup('Heavy Blade'),
+        M.WeaponGroup('Light Blade'),
+        M.WeaponGroup('Mace'),
+        M.WeaponGroup('Pick'),
+        M.WeaponGroup('Polearm'),
+        M.WeaponGroup('Sling'),
+        M.WeaponGroup('Spear'),
+        M.WeaponGroup('Staff'),
+        M.WeaponGroup('Unarmed'),
     ])
     session.add_all([
         M.WeaponProperty('Heavy Thrown'),
@@ -102,52 +116,32 @@ def initialize_database(session):
         M.WeaponCategory('Superior Ranged', superior=True, ranged=True),
         M.WeaponCategory('Improvised Ranged', improvised=True, ranged=True),
     ])
-    cleric = M.Class('Cleric', 'Divine', 'Leader')
-    fighter = M.Class('Fighter', 'Martial', 'Defender', surges=9)
-    paladin = M.Class('Paladin', 'Divine', 'Defender', surges=10)
-    ranger = M.Class('Ranger', 'Martial', 'Striker', surges=6)
-    rogue = M.Class('Rogue', 'Martial', 'Striker', surges=6)
-    warlock = M.Class('Warlock', 'Arcane', 'Striker', surges=6)
-    warlord = M.Class('Warlord', 'Martial', 'Leader')
-    wizard = M.Class('Wizard', 'Arcane', 'Controller', surges=6)
-    avenger = M.Class('Avenger', 'Divine', 'Striker')
-    barbarian = M.Class('Barbarian', 'Primal', 'Striker', surges=8)
-    bard = M.Class('Bard', 'Arcane', 'Leader')
-    druid = M.Class('Druid', 'Primal', 'Controller')
-    invoker = M.Class('Invoker', 'Divine', 'Controller', surges=6)
-    shaman = M.Class('Shaman', 'Primal', 'Leader')
-    sorcerer = M.Class('Sorcerer', 'Arcane', 'Striker', surges=6)
-    warden = M.Class('Warden', 'Primal', 'Defender', surges=9)
-    session.add_all([cleric, fighter, paladin, ranger, rogue, warlock, warlord,
-                     wizard, avenger, barbarian, bard, druid, invoker, shaman,
-                     sorcerer, warden])
-
     session.add_all([
-        M.Deity(name='Avandra',
+        M.Deity('Avandra',
                 alignmentname='Good',
                 domains=['Change',
                          'Luck',
                          'Travel'],
                 patron_of='Halfling'),
-        M.Deity(name='Bahamut',
+        M.Deity('Bahamut',
                 alignmentname='Lawful Good',
                 domains=['Justice',
                          'Protection',
                          'Nobility'],
                 patron_of='Dragonborn'),
-        M.Deity(name='Moradin',
+        M.Deity('Moradin',
                 alignmentname='Lawful Good',
                 domains=['Family',
                          'Community',
                          'Creation'],
                 patron_of='Dwarf'),
-        M.Deity(name='Pelor',
+        M.Deity('Pelor',
                 alignmentname='Good',
                 domains=['Sun',
                          'Agriculture',
                          'Time'],
                 season='Summer'),
-        M.Deity(name='Corellon',
+        M.Deity('Corellon',
                 alignmentname='Unaligned',
                 domains=['Beauty',
                          'Art',
@@ -155,63 +149,63 @@ def initialize_database(session):
                          'The Fey'],
                 patron_of='Eladrin',
                 season='Spring'),
-        M.Deity(name='Erathis',
+        M.Deity('Erathis',
                 alignmentname='Unaligned',
                 domains=['Civilization',
                          'Inventions',
                          'Law']),
-        M.Deity(name='Ioun',
+        M.Deity('Ioun',
                 alignmentname='Unaligned',
                 domains=['Knowledge',
                          'Skill',
                          'Prophecy']),
-        M.Deity(name='Kord',
+        M.Deity('Kord',
                 alignmentname='Unaligned',
                 domains=['Storms',
                          'Battle',
                          'Strength']),
-        M.Deity(name='Melora',
+        M.Deity('Melora',
                 alignmentname='Unaligned',
                 domains=['Wilderness',
                          'Nature',
                          'Sea']),
-        M.Deity(name='Raven Queen',
+        M.Deity('Raven Queen',
                 alignmentname='Unaligned',
                 domains=['Death',
                          'Fate',
                          'Doom'],
                 season='Winter'),
-        M.Deity(name='Sehanine',
+        M.Deity('Sehanine',
                 alignmentname='Unaligned',
                 domains=['Illusion',
                          'Love',
                          'The Moon'],
                 season='Autumn',
                 patron_of='Elf'),
-        M.Deity(name='Asmodeus',
+        M.Deity('Asmodeus',
                 alignmentname='Evil',
                 domains=['Tyranny',
                          'Domination']),
-        M.Deity(name='Bane',
+        M.Deity('Bane',
                 alignmentname='Evil',
                 domains=['War', 'Conquest']),
-        M.Deity(name='Gruumsh',
+        M.Deity('Gruumsh',
                 alignmentname='Chaotic Evil',
                 domains=['Slaughter', 'Destruction']),
-        M.Deity(name='Lolth',
+        M.Deity('Lolth',
                 alignmentname='Chaotic Evil',
                 domains=['Shadow', 'Lies']),
-        M.Deity(name='Tharizdun'),
-        M.Deity(name='Tiamat',
+        M.Deity('Tharizdun'),
+        M.Deity('Tiamat',
                 alignmentname='Evil',
                 domains=['Greed', 'Envy']),
-        M.Deity(name='Torog',
+        M.Deity('Torog',
                 alignmentname='Evil',
                 domains=['The Underdark']),
-        M.Deity(name='Vecna',
+        M.Deity('Vecna',
                 alignmentname='Evil',
                 domains=['The Undead', 'Necromancy']),
-        M.Deity(name='Zehir',
+        M.Deity('Zehir',
                 alignmentname='Evil',
                 domains=['Darkness', 'Poison']),
     ])
@@ -235,16 +229,16 @@ def initialize_database(session):
         M.Skill('Thievery', M.DEX, armor_penalty=True),
     ])
     session.add_all([
-        M.Language(name='Common', script='Common'),
-        M.Language(name='Deep Speech', script='Rellanic'),
-        M.Language(name='Draconic', script='Iokharic'),
-        M.Language(name='Dwarven', script='Davek'),
-        M.Language(name='Elven', script='Rellanic'),
-        M.Language(name='Giant', script='Davek'),
-        M.Language(name='Goblin', script='Common'),
-        M.Language(name='Primordial', script='Barazhad'),
-        M.Language(name='Supernal', script='Supernal'),
-        M.Language(name='Abyssal', script='Barazhad'),
+        M.Language('Common', script='Common'),
+        M.Language('Deep Speech', script='Rellanic'),
+        M.Language('Draconic', script='Iokharic'),
+        M.Language('Dwarven', script='Davek'),
+        M.Language('Elven', script='Rellanic'),
+        M.Language('Giant', script='Davek'),
+        M.Language('Goblin', script='Common'),
+        M.Language('Primordial', script='Barazhad'),
+        M.Language('Supernal', script='Supernal'),
+        M.Language('Abyssal', script='Barazhad'),
     ])
     deva = M.Race(
         'Deva',
@@ -304,6 +298,7 @@ def initialize_database(session):
     elf = M.Race(
         'Elf',
         effect=M.Effect(
+            'Elf Racial Benefits',
             dexterity=+2,
             wisdom=+2,
             vision='Low-Light',
@@ -317,6 +312,7 @@ def initialize_database(session):
     half_elf = M.Race(
         'Half-Elf',
         effect=M.Effect(
+            'Half-Elf Racial Benefits',
             constitution=+2,
             charisma=+2,
             vision='Low-Light',
@@ -331,6 +327,7 @@ def initialize_database(session):
         'Halfling',
         sizename='Small',
         effect=M.Effect(
+            'Halfling Racial Benefits',
             dexterity=+2,
             charisma=+2,
             vision='Normal',
@@ -343,6 +340,7 @@ def initialize_database(session):
     human = M.Race(
         'Human',
         effect=M.Effect(
+            'Human Racial Benefits',
             vision='Normal',
             speed=6,
             fortitude=+1,
@@ -354,6 +352,7 @@ def initialize_database(session):
     tiefling = M.Race(
         'Tiefling',
         effect=M.Effect(
+            'Tiefling Racial Benefits',
             intelligence=+2,
             charisma=+2,
             vision='Low-Light',
@@ -367,6 +366,7 @@ def initialize_database(session):
         'Gnome',
         sizename='Small',
         effect=M.Effect(
+            'Gnome Racial Benefits',
             intelligence=+2,
             charisma=+2,
             vision='Low-Light',
@@ -380,6 +380,7 @@ def initialize_database(session):
     goliath = M.Race(
         'Goliath',
         effect=M.Effect(
+            'Goliath Racial Benefits',
             strength=+2,
             constitution=+2,
             vision='Normal',
@@ -392,6 +393,7 @@ def initialize_database(session):
     half_orc = M.Race(
         'Half-Orc',
         effect=M.Effect(
+            'Half-Orc Racial Benefits',
             strength=+2,
             dexterity=+2,
             vision='Low-Light',
@@ -406,6 +408,7 @@ def initialize_database(session):
     longtooth_shifter = M.Race(
         'Longtooth Shifter',
         effect=M.Effect(
+            'Longtooth Shifter Racial Benefits',
             strength=+2,
             wisdom=+2,
             vision='Low-Light',
@@ -418,6 +421,7 @@ def initialize_database(session):
     razorclaw_shifter = M.Race(
         'Razorclaw Shifter',
         effect=M.Effect(
+            'Razorclaw Shifter Racial Benefits',
             strength=+2,
             wisdom=+2,
             vision='Low-Light',
@@ -430,6 +434,169 @@ def initialize_database(session):
     session.add_all([deva, dragonborn, dwarf, eladrin, elf, half_elf, halfling,
                      human, tiefling, gnome, goliath, half_orc,
                      longtooth_shifter, razorclaw_shifter])
+    cleric = M.Class(
+        'Cleric',
+        powersource_name='Divine',
+        role='Leader',
+        effects=[
+            M.Effect(
+                'Cleric Class Benefits',
+                healing_surges=7
+            )
+        ])
+    fighter = M.Class(
+        'Fighter',
+        powersource_name='Martial',
+        role='Defender',
+        effects=[
+            M.Effect(
+                'Fighter Class Benefits',
+                healing_surges=9
+            )
+        ])
+    paladin = M.Class(
+        'Paladin',
+        powersource_name='Divine',
+        role='Defender',
+        effects=[
+            M.Effect(
+                'Paladin Class Benefits',
+                healing_surges=10
+            )
+        ])
+    ranger = M.Class(
+        'Ranger',
+        powersource_name='Martial',
+        role='Striker',
+        effects=[
+            M.Effect(
+                'Ranger Class Benefits',
+                healing_surges=6
+            )
+        ])
+    rogue = M.Class(
+        'Rogue',
+        powersource_name='Martial',
+        role='Striker',
+        effects=[
+            M.Effect(
+                'Rogue Class Benefits',
+                healing_surges=6
+            )
+        ])
+    warlock = M.Class(
+        'Warlock',
+        powersource_name='Arcane',
+        role='Striker',
+        effects=[
+            M.Effect(
+                'Warlock Class Benefits',
+                healing_surges=6
+            )
+        ])
+    warlord = M.Class(
+        'Warlord',
+        powersource_name='Martial',
+        role='Leader',
+        effects=[
+            M.Effect(
+                'Warlord Class Benefits',
+                healing_surges=7
+            )
+        ])
+    wizard = M.Class(
+        'Wizard',
+        powersource_name='Arcane',
+        role='Controller',
+        effects=[
+            M.Effect(
+                'Wizard Class Benefits',
+                healing_surges=6
+            )
+        ])
+    avenger = M.Class(
+        'Avenger',
+        powersource_name='Divine',
+        role='Striker',
+        effects=[
+            M.Effect(
+                'Avenger Class Benefits',
+                healing_surges=7
+            )
+        ])
+    barbarian = M.Class(
+        'Barbarian',
+        powersource_name='Primal',
+        role='Striker',
+        effects=[
+            M.Effect(
+                'Barbarian Class Benefits',
+                healing_surges=8
+            )
+        ])
+    bard = M.Class(
+        'Bard',
+        powersource_name='Arcane',
+        role='Leader',
+        effects=[
+            M.Effect(
+                'Bard Class Benefits',
+                healing_surges=7
+            )
+        ])
+    druid = M.Class(
+        'Druid',
+        powersource_name='Primal',
+        role='Controller',
+        effects=[
+            M.Effect(
+                'Druid Class Benefits',
+                healing_surges=7
+            )
+        ])
+    invoker = M.Class(
+        'Invoker',
+        powersource_name='Divine',
+        role='Controller',
+        effects=[
+            M.Effect(
+                'Invoker Class Benefits',
+                healing_surges=6
+            )
+        ])
+    shaman = M.Class(
+        'Shaman',
+        powersource_name='Primal',
+        role='Leader',
+        effects=[
+            M.Effect(
+                'Shaman Class Benefits',
+                healing_surges=7
+            )
+        ])
+    sorcerer = M.Class(
+        'Sorcerer',
+        powersource_name='Arcane',
+        role='Striker',
+        effects=[
+            M.Effect(
+                'Sorcerer Class Benefits',
+                healing_surges=6
+            )
+        ])
+    warden = M.Class(
+        'Warden',
+        powersource_name='Primal',
+        role='Defender',
+        effects=[
+            M.Effect(
+                'Warden Class Benefits',
+                healing_surges=9
+            )
+        ])
+    session.add_all([cleric, fighter, paladin, ranger, rogue, warlock, warlord,
+                     wizard, avenger, barbarian, bard, druid, invoker, shaman,
+                     sorcerer, warden])
 
 
 def get_session(db_name):
@@ -438,7 +605,11 @@ def get_session(db_name):
     return sessionmaker(bind=engine)()
 
 
-if __name__ == '__main__':
-    sess = get_session('test1.db')
+def main(filename):
+    sess = get_session(filename)
     initialize_database(sess)
     sess.commit()
+
+
+if __name__ == '__main__':
+    main('test1.db')
