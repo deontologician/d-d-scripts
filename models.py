@@ -102,6 +102,12 @@ class Language(Base):
     script = JSONColumn(String, doc='Script language is written in')
 
 
+class BonusType(Base):
+    '''Types of bonuses for effects. Affects stacking'''
+    __tablename__ = 'bonustype'
+    name = JSONColumn(String, primary_key=True, doc='Type of bonus')
+
+
 class Dice(Base):
     '''Dice types'''
     __tablename__ = 'dice'
@@ -132,18 +138,21 @@ class WeaponCategory(Base):
     __tablename__ = 'weaponcategory'
 
     name = JSONColumn(String, primary_key=True,
-        doc='Name of weapon category')
+                      doc='Name of weapon category')
     melee = JSONColumn(Boolean, default=False,
-        doc='Whether weapons in this category are melee')
+                       doc='Whether weapons in this category are melee')
     ranged = JSONColumn(Boolean, default=False,
-        doc='Whether weapons in this category are ranged')
+                        doc='Whether weapons in this category are ranged')
     simple = JSONColumn(Boolean, default=False,
-        doc='Whether weapons in this category are simple')
-    military = JSONColumn(Boolean, default=False,
+                        doc='Whether weapons in this category are simple')
+    military = JSONColumn(
+        Boolean, default=False,
         doc='Whether weapons in this category are military')
-    superior = JSONColumn(Boolean, default=False,
+    superior = JSONColumn(
+        Boolean, default=False,
         doc='Whether weapons in this category are superior')
-    improvised = JSONColumn(Boolean, default=False,
+    improvised = JSONColumn(
+        Boolean, default=False,
         doc='Whether weapons in this category are improvised')
 
 
@@ -181,6 +190,49 @@ class Weapon(Base):
     properties = jsonrelationship(WeaponProperty,
                                   secondary=weapon_weaponproperty,
                                   backref='weapons')
+
+
+class ArmorType(Base):
+    '''Types of armor'''
+    __tablename__ = 'armortype'
+
+    name = JSONColumn(String, primary_key=True,
+                      doc='Name of this armor type')
+    weight = JSONColumn(
+        Enum('Light', 'Heavy'), nullable=False,
+        doc='The weight of this armor type (heavy or light)')
+
+
+armor_effect = Table(
+    'armor_effect',
+    Base.metadata,
+    Column('armorname', String, ForeignKey('armor.name'), primary_key=True),
+    Column('effectname', String, ForeignKey('effect.name'), primary_key=True),
+)
+
+
+class Armor(Base):
+    '''Represents a set of armor'''
+    __tablename__ = 'armor'
+
+    name = JSONColumn(String, primary_key=True,
+                      doc='Name of this set of armor')
+    typename = JSONColumn(String, ForeignKey('armortype.name'), nullable=False,
+                          doc='Type of armor this is')
+    weight = JSONColumn(Integer, doc="This armor's weight in pounds.")
+
+    effect = relationship('Effect', secondary='armor_effect', uselist=False)
+    type = relationship(ArmorType, backref='armors')
+
+    check = jsonassociation_proxy('effect', 'armor_check')
+    ac_bonus = jsonassociation_proxy('effect', 'ac')
+    speed = jsonassociation_proxy('effect', 'speed')
+
+    def __init__(self, name, **kwargs):
+        effect_attrs = {'check', 'ac_bonus', 'speed'}
+        if effect_attrs & kwargs.viewkeys() and 'effect' not in kwargs:
+            self.effect = Effect(name=name + "'s Effect")
+        super(Armor, self).__init__(name, **kwargs)
 
 
 class DamageType(Base):
@@ -229,6 +281,13 @@ class Race(Base):
                                     uselist=False,
                                     backref='patron_of_race')
     effect = jsonrelationship('Effect')
+
+    def __init__(self, name, **kwargs):
+        self.name = name
+        if 'effect' in kwargs:
+            self.effect = kwargs.pop('effect')
+            self.effect.name = name + ' Racial Benefits'
+            self.effect.bonustype_name = 'Racial'
 
 
 class PowerSource(Base):
@@ -399,6 +458,8 @@ class Effect(Base):
     __json_null__ = False
 
     name = JSONColumn(String, primary_key=True, doc='Name of effect')
+    bonustype_name = JSONColumn(String, ForeignKey('bonustype.name'),
+                                doc='What kind of bonus type this counts as')
     max_hp = JSONColumn(Integer, doc="Mod to maximum hitpoints")
     intelligence = JSONColumn(Integer, doc="Mod to intelligence")
     constitution = JSONColumn(Integer, doc="Mod to constitution")
@@ -422,6 +483,9 @@ class Effect(Base):
                              'Normal',
                              'Blind'),
                         doc="Change vision level to this")
+    armor_check = Column(
+        Integer, doc='Modifier to STR, DEX, and CON based '
+                     'skill checks due to armor')
 
     stats = relationship('Stat', backref='effect')
     language_stats = relationship('LanguageStat')
@@ -429,6 +493,11 @@ class Effect(Base):
     damage_stats = jsonrelationship('DamageStat')
 
     languages = jsonassociation_proxy('language_stats', 'language')
+
+    def __init__(self, name=None, **kwargs):
+        '''Allow the effect to be created unnamed. Will fail if trying to
+        insert into db without naming it'''
+        super(Effect, self).__init__(name, **kwargs)
 
     def __str__(self):
         mods = ['{0:+} {1}'.format(getattr(self, attr), pretty(attr))
@@ -445,6 +514,12 @@ class Effect(Base):
         return '{0.name}:\n  {1}'.format(self, '\n  '.join(mods))
 
 
+class StatType(Base):
+    '''Types of stats that can exist'''
+    __tablename__ = 'stattype'
+    name = Column(String, primary_key=True)
+
+
 class Stat(Base):
     '''Multiple stats can be part of a single effect'''
 
@@ -453,16 +528,22 @@ class Stat(Base):
     id = Column(Integer, primary_key=True, doc='Unique id of stat')
     effectname = Column(String, ForeignKey('effect.name'),
                         doc='Name of the effect this stat belongs to')
-    stat_kind = Column(Enum('language', 'skill', 'damage'),
-                       nullable=False,
-                       doc='Kind of stat this is')
+    stattype_name = Column(String,
+                           ForeignKey('stattype.name'),
+                           nullable=False,
+                           doc='Kind of stat this is')
     __table_args__ = (Index('stat_effectname_idx', effectname),)
-    __mapper_args__ = {'polymorphic_on': stat_kind}
+    __mapper_args__ = {'polymorphic_on': stattype_name}
+
+    def __init__(self, **kwargs):
+        for attr, value in kwargs.iteritems():
+            setattr(self, attr, value)
+        #intentionally don't call super since we don't have a 'name'
 
 
 class LanguageStat(Stat):
     '''Stat providing language comprehension'''
-    __mapper_args__ = {'polymorphic_identity': 'language'}
+    __mapper_args__ = {'polymorphic_identity': 'Language'}
 
     language = JSONColumn(String, ForeignKey('language.name'),
                           doc="Language understanding bestowed")
@@ -476,7 +557,7 @@ class LanguageStat(Stat):
 
 class SkillStat(Stat):
     '''Stat modifying an skill'''
-    __mapper_args__ = {'polymorphic_identity': 'skill'}
+    __mapper_args__ = {'polymorphic_identity': 'Skill'}
 
     skillname = JSONColumn(String, ForeignKey('skill.name'),
                            doc="Name of skill modified")
@@ -492,15 +573,47 @@ class SkillStat(Stat):
 
 class DamageStat(Stat):
     '''Stat modifying a damage type amount'''
-    __mapper_args__ = {'polymorphic_identity': 'damage'}
+    __mapper_args__ = {'polymorphic_identity': 'Damage'}
 
-    damagetype_name = JSONColumn(String, ForeignKey('damagetype.name'),
-                             doc='Damage type resisted/weakened (null if any)')
+    damagetype_name = JSONColumn(
+        String, ForeignKey('damagetype.name'),
+        doc='Damage type resisted/weakened (null if any)')
     damagetype_mod = JSONColumn(Integer, doc='Mod to damage type')
 
     def __init__(self, damagetype_name, damagetype_mod):
         self.damagetype_name = damagetype_name
         self.damagetype_mod = damagetype_mod
+
+
+class ProficiencyStat(Stat):
+    '''Stat granting proficiency'''
+    __mapper_args__ = {'polymorphic_identity': 'Proficiency'}
+
+    weaponcategory_name = JSONColumn(
+        String, ForeignKey('weaponcategory.name'),
+        doc='name of weapon category proficiency granted')
+    armortype_name = JSONColumn(
+        String, ForeignKey('armortype.name'),
+        doc='name of armor type proficiency granted')
+
+    weaponcategory = relationship('WeaponCategory')
+    armortype = relationship('ArmorType')
+
+    @property
+    def name(self):
+        if self.weaponcategory_name is not None:
+            return self.weaponcategory_name
+        else:
+            return self.armortype_name
+
+    def __init__(self, cat, **kwargs):
+        if isinstance(cat, WeaponCategory):
+            self.weaponcategory_name = cat.name
+        elif isinstance(cat, ArmorType):
+            self.armortype_name = cat.name
+        else:
+            raise TypeError("Can't be proficient in {.name}".format(cat))
+        super(ProficiencyStat, self).__init__(**kwargs)
 
 
 class CharacterEncounter(Base):

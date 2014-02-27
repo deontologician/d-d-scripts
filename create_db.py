@@ -35,6 +35,22 @@ def initialize_database(session):
         M.Size('Gargantuan', space=4),
     ])
     session.add_all([
+        M.StatType('Language'),
+        M.StatType('Skill'),
+        M.StatType('Damage'),
+        M.StatType('Proficiency'),
+    ])
+    session.add_all([
+        M.BonusType('Armor'),
+        M.BonusType('Enhancement'),
+        M.BonusType('Feat'),
+        M.BonusType('Item'),
+        M.BonusType('Power'),
+        M.BonusType('Proficiency'),
+        M.BonusType('Racial'),
+        M.BonusType('Untyped'),
+    ])
+    session.add_all([
         M.PowerSource('Martial',
                       'Represents military training or general '
                       'prowess with physical weaponry'),
@@ -115,6 +131,14 @@ def initialize_database(session):
         M.WeaponCategory('Military Ranged', military=True, ranged=True),
         M.WeaponCategory('Superior Ranged', superior=True, ranged=True),
         M.WeaponCategory('Improvised Ranged', improvised=True, ranged=True),
+    ])
+    session.add_all([
+        M.ArmorType('Cloth', weight='Light'),
+        M.ArmorType('Leather', weight='Light'),
+        M.ArmorType('Hide', weight='Light'),
+        M.ArmorType('Chainmail', weight='Heavy'),
+        M.ArmorType('Scale', weight='Heavy'),
+        M.ArmorType('Plate', weight='Heavy'),
     ])
     session.add_all([
         M.Deity('Avandra',
@@ -243,7 +267,6 @@ def initialize_database(session):
     deva = M.Race(
         'Deva',
         effect=M.Effect(
-            'Deva Racial Benefits',
             intelligence=+2,
             wisdom=+2,
             speed=6,
@@ -256,7 +279,6 @@ def initialize_database(session):
     dragonborn = M.Race(
         'Dragonborn',
         effect=M.Effect(
-            'Dragonborn Racial Benefits',
             strength=+2,
             charisma=+2,
             vision='Normal',
@@ -270,7 +292,6 @@ def initialize_database(session):
     dwarf = M.Race(
         'Dwarf',
         effect=M.Effect(
-            'Dwarf Racial Benefits',
             constitution=+2,
             wisdom=+2,
             vision='Low-Light',
@@ -284,7 +305,6 @@ def initialize_database(session):
     eladrin = M.Race(
         'Eladrin',
         effect=M.Effect(
-            'Eladrin Racial Benefits',
             dexterity=+2,
             intelligence=+2,
             vision='Low-Light',
@@ -298,7 +318,6 @@ def initialize_database(session):
     elf = M.Race(
         'Elf',
         effect=M.Effect(
-            'Elf Racial Benefits',
             dexterity=+2,
             wisdom=+2,
             vision='Low-Light',
@@ -312,7 +331,6 @@ def initialize_database(session):
     half_elf = M.Race(
         'Half-Elf',
         effect=M.Effect(
-            'Half-Elf Racial Benefits',
             constitution=+2,
             charisma=+2,
             vision='Low-Light',
@@ -327,7 +345,6 @@ def initialize_database(session):
         'Halfling',
         sizename='Small',
         effect=M.Effect(
-            'Halfling Racial Benefits',
             dexterity=+2,
             charisma=+2,
             vision='Normal',
@@ -340,7 +357,6 @@ def initialize_database(session):
     human = M.Race(
         'Human',
         effect=M.Effect(
-            'Human Racial Benefits',
             vision='Normal',
             speed=6,
             fortitude=+1,
@@ -352,7 +368,6 @@ def initialize_database(session):
     tiefling = M.Race(
         'Tiefling',
         effect=M.Effect(
-            'Tiefling Racial Benefits',
             intelligence=+2,
             charisma=+2,
             vision='Low-Light',
@@ -366,7 +381,6 @@ def initialize_database(session):
         'Gnome',
         sizename='Small',
         effect=M.Effect(
-            'Gnome Racial Benefits',
             intelligence=+2,
             charisma=+2,
             vision='Low-Light',
@@ -380,7 +394,6 @@ def initialize_database(session):
     goliath = M.Race(
         'Goliath',
         effect=M.Effect(
-            'Goliath Racial Benefits',
             strength=+2,
             constitution=+2,
             vision='Normal',
@@ -393,7 +406,6 @@ def initialize_database(session):
     half_orc = M.Race(
         'Half-Orc',
         effect=M.Effect(
-            'Half-Orc Racial Benefits',
             strength=+2,
             dexterity=+2,
             vision='Low-Light',
@@ -408,7 +420,6 @@ def initialize_database(session):
     longtooth_shifter = M.Race(
         'Longtooth Shifter',
         effect=M.Effect(
-            'Longtooth Shifter Racial Benefits',
             strength=+2,
             wisdom=+2,
             vision='Low-Light',
@@ -421,7 +432,6 @@ def initialize_database(session):
     razorclaw_shifter = M.Race(
         'Razorclaw Shifter',
         effect=M.Effect(
-            'Razorclaw Shifter Racial Benefits',
             strength=+2,
             wisdom=+2,
             vision='Low-Light',
@@ -441,7 +451,13 @@ def initialize_database(session):
         effects=[
             M.Effect(
                 'Cleric Class Benefits',
-                healing_surges=7
+                healing_surges=7,
+                stats=[
+                    M.ProficiencyStat(M.WeaponCategory('Simple Melee')),
+                    M.ProficiencyStat(M.WeaponCategory('Simple Ranged')),
+                    M.ProficiencyStat(M.ArmorType('Light')),
+                    M.ProficiencyStat(M.ArmorType('Cloth')),
+                ]
             )
         ])
     fighter = M.Class(
@@ -597,6 +613,18 @@ def initialize_database(session):
     session.add_all([cleric, fighter, paladin, ranger, rogue, warlock, warlord,
                      wizard, avenger, barbarian, bard, druid, invoker, shaman,
                      sorcerer, warden])
+    session.add_all([
+        M.Armor('Cloth Armor (basic clothing)', typename='Cloth', weight=4),
+        M.Armor('Feyweave Armor', typename='Cloth', weight=5, ac_bonus=+1),
+        M.Armor('Starweave Armor', typename='Cloth', weight=3, ac_bonus=+2),
+        M.Armor('Leather Armor', typename='Leather', weight=15, ac_bonus=+2),
+        M.Armor('Feyleather Armor',
+                typename='Leather', weight=15, ac_bonus=+3),
+        M.Armor('Starleather Armor',
+                typename='Leather', weight=15, ac_bonus=+4),
+        M.Armor('Hide Armor',
+                typename='Hide', weight=25, check=-1, ac_bonus=+3),
+    ])
 
 
 def get_session(db_name):
