@@ -1,11 +1,64 @@
 import random as r
 import readline
 
-class Player(object):
-    def __init__(self, name, init_mod):
+
+class Character(object):
+    def __init__(self, name, init_mod=0, max_hp=0):
         self.name = name
         self.init_mod = init_mod
         self.effects = []
+        self.max_hp = max_hp
+        self.hp = max_hp
+
+    @property
+    def json(self):
+        output = {
+            'name': self.name,
+            'init_mod': self.init_mod,
+            'effects': [e.json for e in self.effects],
+            'max_hp': self.max_hp,
+            'hp': self.hp,
+        }
+
+    def damage(self, dmg):
+        "Simulates damage to monster"
+        self.hp -= dmg
+
+    def life_status(self):
+        "Whether bloodied/disabled/dying/dead"
+        if self.bloodied:
+            return "bloodied"
+        elif self.disabled:
+            return "disabled"
+        elif self.dying:
+            return "dying"
+        elif self.dead:
+            return "dead"
+        else:
+            return ""
+
+    @property
+    def bloodied(self):
+        return self.max_hp//2 >= self.hp
+
+    @property
+    def dead(self):
+        return self.hp <= -10
+
+    @property
+    def disabled(self):
+        return self.hp == 0
+
+    @property
+    def dying(self):
+        return -10 < self.hp < 0
+
+    def status(self):
+        "Returns a string of the current status"
+        return self.name + ": (" + str(self.hp) + "/"\
+            + str(self.max_hp) + ")hp "\
+            + ('(' + self.life_status() + ')' if self.life_status() else "")\
+            + ("[" + "][".join(self.effects) + "]" if self.effects else "")
 
     def __repr__(self):
         return self.name
@@ -17,45 +70,52 @@ class Player(object):
     def defect(self, effect):
         "Removes a status effect string"
         self.effects.remove(effect)
-
-    def life_status(self):
-        return ""
-        
-
-class Monster(Player):
-    def __init__(self, name, init_mod, max_hp):
-        Player.__init__(self, name, init_mod)
-        self.max_hp = max_hp
-        self.hp = max_hp
-
-    def damage(self, dmg):
-        "Simulates damage to monster"
-        self.hp -= dmg
-
-    def life_status(self):
-        "Whether the monster is bloodied or dead"
-        if self.hp <= 0:
-            return "dead"
-        elif self.max_hp/2 >= self.hp:
-            return "bloodied"
-        else:
-            return ""
-
-    def status(self):
-        "Returns a string of the current status"
-        return self.name + ": (" + str(self.hp) + "/"\
-            + str(self.max_hp) + ")hp "\
-            + ('(' + self.life_status() + ')' if self.life_status() else "")\
-            + ("[" + "][".join(self.effects) + "]" if self.effects else "")
     
+
+class PlayerCharacter(Character):
+    def __init__(self, *args, **kwargs):
+        self.playername = kwargs.pop('playername', None)
+        super(PlayerCharacter, self).__init__(*args, **kwargs)
+
+    @property
+    def json(self):
+        parent = super(PlayerCharacter, self).json
+        parent['playername'] = self.playername
+        return parent
+
+
+class Monster(Character):
+    '''A Monster'''
+
+    def __init__(self, *args, **kwargs):
+        self.encounter = kwargs.pop('encounter', None)
+        super(Monster, self).__init__()
+
+    @property
+    def dying(self):
+        return False
+
+    @property
+    def disabled(self):
+        return False
+
+    @property
+    def dead(self):
+        return self.hp <= 0
 
 class Completer(object):
     "This keeps a list of the possible keywords for autocompletion"
     def __init__(self, options):
         self.options = sorted(options)
         self.matches = []
+
+    def __enter__(self):
+        self.old_completer = readline.get_completer()
         readline.parse_and_bind("tab: complete")
         readline.set_completer(self.complete)
+
+    def __exit__(self, *args, **kwargs):
+        readline.set_completer(self.old_completer)
         
     def complete(self, text, state):
         "This is called by the readline module"
@@ -110,7 +170,8 @@ class Commandline(object):
             help_string += cmd + ", "
         help_string += "help, exit"
         return help_string
-        
+
+
 def ordinal(num):
     "Returns the number passed in with the correct ordinal suffix"
     ones_place = num % 10
@@ -177,3 +238,10 @@ def d4():
 def d2():
     "Simulates a d2 roll"
     return r.randint(1,2)
+
+def ability_rolls():
+    rolls = [sum(sorted(r.randint(1, 6)
+                        for _ in xrange(4))[1:])
+                        for _x in xrange(6)]
+    avg = sum(rolls) / float(len(rolls))
+    return rolls, avg
